@@ -11,6 +11,12 @@ public class Visitor implements fr.labri.shelly.Visitor {
 	public void visit(ShellyItem item) {
 	}
 	
+	public void visit_parent(ShellyItem item) {
+		ShellyItem p = item.getParent();
+		if(p != null)
+			p.accept(this);
+	}
+	
 	@Override
 	public void visit(Option option) {
 		visit((ShellyItem)option);
@@ -36,20 +42,39 @@ public class Visitor implements fr.labri.shelly.Visitor {
 		public void visit(ShellyItem item) {
 			item.visit_all(this);
 		}
+		@Override
+		public void visit(CommandGroup cmdGroup) {
+			visit((OptionGroup)cmdGroup);
+		}
 	}
 	
 	static class OptionVisitor extends Visitor {
 		@Override
 		public void visit(ShellyItem item) {
-			ShellyItem parent = item.getParent();
-			if(parent != null)
-				parent.accept(this);
+			visit_parent(item);
+		}
+		
+		@Override
+		public void visit(OptionGroup grp) {
+			grp.visit_options(this);
+			visit((ShellyItem)grp);
+		}
+		
+		@Override
+		public void visit(CommandGroup grp) {
 		}
 	}
 	
-	static class CommandVisitor extends TraversalVisitor {
+	static class CommandVisitor extends Visitor {
+		
 		@Override
-		public void visit(ShellyItem item) {
+		public void visit(CommandGroup cmdGrp) {
+			visit((Command) cmdGrp);
+		}
+		
+		@Override
+		public void visit(fr.labri.shelly.OptionGroup cmd) {
+			cmd.visit_commands(this);
 		}
 	}
 }

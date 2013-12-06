@@ -6,28 +6,34 @@ import java.util.Iterator;
 
 import fr.labri.shelly.impl.HelpHelper;
 import fr.labri.shelly.impl.OptionGroup;
-import fr.labri.shelly.impl.OptionGroupFactory;
+import fr.labri.shelly.impl.ModelFactory;
 import fr.labri.shelly.impl.PeekIterator;
 
 public class Shell {
-	OptionGroup grp;
-	private Shell(OptionGroup createGroup) {
+	CommandGroup grp;
+	
+	private Shell(CommandGroup createGroup) {
 		grp = createGroup;
 	}
 	
-	static public Shell createShell(OptionGroupFactory factory, Class<?> clazz) {
+	static public Shell createShell(ModelFactory factory, Class<?> clazz) {
 		return new Shell(factory.createModel(clazz));
 	}
 	static public Shell createShell(Class<?> clazz) {
-		return createShell(OptionGroupFactory.DEFAULT, clazz);
-	}
-	public static void printHelp(Class<?> clazz) {
-		 printHelp(OptionGroupFactory.DEFAULT, clazz);
+		return createShell(ModelFactory.DEFAULT, clazz);
 	}
 	
-	public static void printHelp(OptionGroupFactory factory, Class<?> clazz) {
-		OptionGroup grp = factory.createModel(clazz);
-		HelpHelper.printHelp(grp);
+	public CommandGroup getGroup() {
+		return grp;
+	}
+	
+	public static void printHelp(Class<?> clazz) {
+		 printHelp(ModelFactory.DEFAULT, clazz);
+	}
+	
+	public static void printHelp(ModelFactory factory, Class<?> clazz) {
+		Shell shell = createShell(factory, clazz);
+		HelpHelper.printHelp(shell);
 	}
 	
 	final public void parseCommandLine(String[] cmds) {

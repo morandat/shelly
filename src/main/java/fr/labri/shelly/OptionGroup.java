@@ -4,6 +4,7 @@ import fr.labri.shelly.impl.PeekIterator;
 
 public interface OptionGroup extends ShellyItem {
 	public abstract Class<?> getAssociatedClass();
+	public void execute(Object parent, PeekIterator<String> cmdLine);
 	public abstract Object fillOptions(Object parent, PeekIterator<String> cmdLine);
 	public abstract OptionGroup getParent();
 	

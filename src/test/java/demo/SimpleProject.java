@@ -9,6 +9,7 @@ import fr.labri.shelly.Shell;
 
 @CommandGroup(name = "git")
 public class SimpleProject {
+
 	@Option(name = "verbose")
 	public String verbose;
 
@@ -18,7 +19,7 @@ public class SimpleProject {
 		Shell.printHelp(SimpleProject.class);
 	}
 
-	@OptionGroup()
+	@OptionGroup
 	public class HelpCmds {
 		@Option(name = "verbose")
 		public String verbose;
@@ -26,17 +27,33 @@ public class SimpleProject {
 		@Option
 		public int level;
 
-		@Command(name = "describe")
-		public void describe(String v1, String v2) {
-			System.out.println("verbose(in): " + verbose);
-			System.out.println("level: " + level);
-			// System.out.println("verbose(out):" + SimpleProject.this.verbose);
-			System.out.println("Value is: " + v1 + "/" + v2);
+		@OptionGroup
+		public class HelpCmds2 {
+
+			@Option
+			public String truc;
+
+			@Command(name = "describe")
+			public void describe(String v1, String v2) {
+				System.out.println("verbose(in): " + verbose);
+				System.out.println("level: " + level);
+				// System.out.println("verbose(out):" + SimpleProject.this.verbose);
+				System.out.println("Value is: " + v1 + "/" + v2);
+			}
+
 		}
+
 		public void describe(String v1) {
 		}
 	}
-
+	@CommandGroup
+	class Branch {
+		@Option
+		public int format;
+		@Command
+		public void list(){};
+	}
+	
 	@Command(name = "color", factory = MyFactory.class)
 	public void color(Color c) {
 		System.out.println(c);
@@ -46,11 +63,11 @@ public class SimpleProject {
 		public Converter<?> getObjectConverter(Class<?> type) {
 			if (type.isAssignableFrom(Color.class))
 				return new SimpleConverter<Color>() {
-					@Override
-					public Color convert(String value) {
-						return new Color(253); //
-					}
-				};
+				@Override
+				public Color convert(String value) {
+					return new Color(253); //
+				}
+			};
 			return super.getObjectConverter(type);
 		}
 	}
