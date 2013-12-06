@@ -10,4 +10,6 @@ import java.lang.annotation.Target;
 @Inherited
 @Retention(RetentionPolicy.RUNTIME)
 public @interface OptionGroup {
+
+	String name() default Option.NO_NAME;
 }

@@ -1,18 +1,25 @@
 package fr.labri.shelly.impl;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
-public class PeekIterator implements Iterator<String> {
+public class PeekIterator<T> implements Iterator<T> {
+	final Iterator<T> _backing;
 	boolean _eof;
-	String _current;
-	Iterator<String> _backing;
-	
-	public PeekIterator(Iterator<String> backing) {
-		_backing = backing;
-		next();
+	T _current;
+
+	public PeekIterator(Iterable<T> backing) {
+		this(backing.iterator());
 	}
 
-	public String peek() {
+	public PeekIterator(Iterator<T> backing) {
+		_backing = backing;
+		try {
+			next();
+		} catch (NoSuchElementException e) { }
+	}
+
+	public T peek() {
 		return _current;
 	}
 	
@@ -20,12 +27,12 @@ public class PeekIterator implements Iterator<String> {
 		return _eof || _backing.hasNext();
 	}
 	
-	public String next() {
+	public T next() {
 		if(_eof) {
 			_eof = false;
 			return _current;
 		}
-		String val = _current;
+		T val = _current;
 		_current = _backing.next();
 		if(!_backing.hasNext())
 			_eof = true;

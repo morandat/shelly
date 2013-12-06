@@ -22,7 +22,7 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 	}
 
 	public Converter<?> getPrimitiveConverter(Class<?> type) {
-		 if(type.isAssignableFrom(String.class))
+		 if(type.isAssignableFrom(int.class))
 				return INT_CONVERTER;
 		 return null;
 	}
@@ -30,6 +30,8 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 	public Converter<?> getObjectConverter(Class<?> type) {
 		 if(type.isAssignableFrom(String.class))
 				return STR_CONVERTER;
+		 if(type.isAssignableFrom(Integer.class))
+				return INT_CONVERTER;
 		return null;
 	}
 	
@@ -38,6 +40,7 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 			return cmd;
 		}
 	};
+	
 	static Converter<Integer> INT_CONVERTER = new SimpleConverter<Integer>() {
 		public Integer convert(String cmd) {
 			return Integer.parseInt(cmd);
@@ -45,13 +48,13 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 	};
 	
 	public static abstract class SimpleConverter<T> implements Converter<T>  {
-		final public T convert(String cmd, PeekIterator cmdLine) {
+		final public T convert(String cmd, PeekIterator<String> cmdLine) {
 			return convert(cmdLine.next());
 		}
 		public abstract T convert(String value);
 	}
 
-	public static Object[] convertArray(Converter<?>[] converters, String cmd, PeekIterator cmdLine) {
+	public static Object[] convertArray(Converter<?>[] converters, String cmd, PeekIterator<String> cmdLine) {
 		Object[] args = new Object[converters.length];
 		for(int i = 0; i < converters.length; i ++)
 			args[i] = converters[i].convert(cmd, cmdLine);

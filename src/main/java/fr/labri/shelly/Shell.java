@@ -16,7 +16,7 @@ public class Shell {
 	}
 	
 	static public Shell createShell(OptionGroupFactory factory, Class<?> clazz) {
-		return new Shell(factory.createGroup(clazz));
+		return new Shell(factory.createModel(clazz));
 	}
 	static public Shell createShell(Class<?> clazz) {
 		return createShell(OptionGroupFactory.DEFAULT, clazz);
@@ -26,7 +26,7 @@ public class Shell {
 	}
 	
 	public static void printHelp(OptionGroupFactory factory, Class<?> clazz) {
-		OptionGroup grp = factory.createGroup(clazz);
+		OptionGroup grp = factory.createModel(clazz);
 		HelpHelper.printHelp(grp);
 	}
 	
@@ -39,6 +39,6 @@ public class Shell {
 	}
 	
 	final public void parse(Iterator<String> cmdLine) {
-		grp.execute(new PeekIterator(cmdLine));
+		grp.execute(null, new PeekIterator<>(cmdLine));
 	}
 }
