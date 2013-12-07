@@ -9,6 +9,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Inherited
 @Retention(RetentionPolicy.RUNTIME)
-public @interface CommandGroup {
+public @interface Group {
 	String name() default Option.NO_NAME;
 }

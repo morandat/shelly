@@ -5,18 +5,18 @@ import java.lang.reflect.Field;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Option;
-import fr.labri.shelly.OptionGroup;
+import fr.labri.shelly.Context;
 import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.Visitor;
 
 class SimpleOption implements Option {
 	final String _id;
-	final OptionGroup _parent;
+	final Context _parent;
 	final String _description = "No description";
 	final Field _field;
 	final Converter<?> _converter;
 
-	SimpleOption(ConverterFactory factory, OptionGroup parent, String name, Field field) {
+	SimpleOption(ConverterFactory factory, Context parent, String name, Field field) {
 		_id = name;
 		_field = field;
 		_parent = parent;

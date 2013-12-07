@@ -3,14 +3,14 @@ package fr.labri.shelly.impl;
 import fr.labri.shelly.ShellyDescriptable;
 import fr.labri.shelly.Visitor;
 
-public class CommandGroup extends OptionGroup implements fr.labri.shelly.CommandGroup, ShellyDescriptable {
-	public CommandGroup(OptionGroup parent, String name, Class<?> clazz) {
+public class Group extends Context implements fr.labri.shelly.Group, ShellyDescriptable {
+	public Group(Context parent, String name, Class<?> clazz) {
 		super(parent, name, clazz);
 	}
 	
 	@Override
 	public void accept(Visitor visitor) {
-		visitor.visit((CommandGroup)this);
+		visitor.visit((Group)this);
 	}
 
 	@Override
