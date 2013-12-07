@@ -3,8 +3,8 @@ package fr.labri.shelly.impl;
 import java.util.ArrayList;
 
 import fr.labri.shelly.Command;
-import fr.labri.shelly.CommandGroup;
-import fr.labri.shelly.OptionGroup;
+import fr.labri.shelly.Group;
+import fr.labri.shelly.Context;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.ShellyDescriptable;
@@ -18,7 +18,7 @@ public class HelpHelper {
 		printHelp(shell.getGroup());
 	}
 	
-	public static void printHelp(CommandGroup grp) {
+	public static void printHelp(Group grp) {
 		System.out.println("Options:");
 		for (String[] help : new HelpOptionVisitor().getHelp(grp))
 			System.out.print(formater.format(help));
@@ -29,14 +29,13 @@ public class HelpHelper {
 	}
 
 	public static void printHelp(Command cmd) {
-		System.out.println("Options:");
-		for (String[] help : new HelpAcceptedOptionVisitor().getHelp(cmd))
-			System.out.printf("\t%s:\t%s\n", help[0], help[1]);
-
 		String help[] = cmd.getHelpString();
 		System.out.println("Description: " + help[0]);
 		System.out.println(help[1]);
+		System.out.println("Options:");
 
+		for (String[] opt : new HelpAcceptedOptionVisitor().getHelp(cmd))
+			System.out.printf("\t%s:\t%s\n", opt[0], opt[1]);
 	}
 	
 	
@@ -54,11 +53,9 @@ public class HelpHelper {
 	
 	static class HelpAcceptedOptionVisitor extends OptionVisitor {
 		HelpVisitor help = new HelpVisitor();
-		
 		public void visit(Option opt) {
 			help.addHelp(opt);
 		}
-		
 		public String[][] getHelp(Command item) {
 			item.accept(this);
 			return help.getHelp(this, item);
@@ -69,12 +66,12 @@ public class HelpHelper {
 		HelpVisitor help = new HelpVisitor();
 		
 		@Override
-		public void visit(OptionGroup grp) {
+		public void visit(Context grp) {
 			grp.visit_options(this);
 		}
 		
 		@Override
-		public void visit(CommandGroup grp) {
+		public void visit(Group grp) {
 		}
 
 		@Override
@@ -82,8 +79,8 @@ public class HelpHelper {
 			help.addHelp(opt);
 		}
 		
-		public String[][] getHelp(CommandGroup item) {
-			visit(item);
+		public String[][] getHelp(Group item) {
+			((fr.labri.shelly.impl.Group)item).visit_options(this);
 			return help.getHelp(this, item);
 		}
 	}
@@ -96,8 +93,8 @@ public class HelpHelper {
 			help.addHelp(cmd);
 		}
 
-		public String[][] getHelp(CommandGroup item) {
-			this.visit((fr.labri.shelly.impl.OptionGroup)item);
+		public String[][] getHelp(Group item) {
+			this.visit((fr.labri.shelly.impl.Context)item);
 			return help.getHelp(this, item);
 		}
 	}

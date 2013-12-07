@@ -7,7 +7,7 @@ import fr.labri.shelly.impl.ConverterFactory;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Shell;
 
-@CommandGroup(name = "git")
+@Group(name = "git")
 public class SimpleProject {
 
 	@Option(name = "verbose")
@@ -19,7 +19,7 @@ public class SimpleProject {
 		Shell.printHelp(SimpleProject.class);
 	}
 
-	@OptionGroup
+	@Context
 	public class HelpCmds {
 		@Option(name = "verbose")
 		public String verbose;
@@ -27,7 +27,7 @@ public class SimpleProject {
 		@Option
 		public int level;
 
-		@OptionGroup
+		@Context
 		public class HelpCmds2 {
 
 			@Option
@@ -46,14 +46,32 @@ public class SimpleProject {
 		public void describe(String v1) {
 		}
 	}
-	@CommandGroup
-	class Branch {
+
+	@Group
+	public class Branch {
 		@Option
 		public int format;
 		@Command
 		public void list(){};
+
+		@Context
+		public class PasswordInfo {
+			@Option
+			public String pass;
+
+
+
+			@Context
+			public class UserInfo {
+				@Option
+				public String user;
+
+				@Command
+				public void take() {};
+			}
+		}
 	}
-	
+
 	@Command(name = "color", factory = MyFactory.class)
 	public void color(Color c) {
 		System.out.println(c);

@@ -6,18 +6,18 @@ import java.lang.reflect.Method;
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
-import fr.labri.shelly.OptionGroup;
+import fr.labri.shelly.Context;
 import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.Visitor;
 
 class SimpleCommand implements Command {
-	final OptionGroup _parent;
+	final Context _parent;
 	final String _id;
 	final Method _method;
 	final String _description = "No description";
 	final Converter<?>[] _converters;
 
-	SimpleCommand(ConverterFactory factory, OptionGroup parent, String name, Method method) {
+	SimpleCommand(ConverterFactory factory, Context parent, String name, Method method) {
 		_id = name;
 		_method = method;
 		_parent = parent;

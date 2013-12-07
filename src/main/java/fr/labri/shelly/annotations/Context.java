@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Inherited
 @Retention(RetentionPolicy.RUNTIME)
-public @interface OptionGroup {
+public @interface Context {
 
 	String name() default Option.NO_NAME;
 }

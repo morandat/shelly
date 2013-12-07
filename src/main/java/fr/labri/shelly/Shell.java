@@ -5,14 +5,14 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import fr.labri.shelly.impl.HelpHelper;
-import fr.labri.shelly.impl.OptionGroup;
+import fr.labri.shelly.impl.Context;
 import fr.labri.shelly.impl.ModelFactory;
 import fr.labri.shelly.impl.PeekIterator;
 
 public class Shell {
-	CommandGroup grp;
+	Group grp;
 	
-	private Shell(CommandGroup createGroup) {
+	private Shell(Group createGroup) {
 		grp = createGroup;
 	}
 	
@@ -23,7 +23,7 @@ public class Shell {
 		return createShell(ModelFactory.DEFAULT, clazz);
 	}
 	
-	public CommandGroup getGroup() {
+	public Group getGroup() {
 		return grp;
 	}
 	

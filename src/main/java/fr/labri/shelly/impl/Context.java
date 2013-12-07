@@ -12,10 +12,10 @@ import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.Visitor;
 import fr.labri.shelly.impl.PeekIterator;
 
-public class OptionGroup implements fr.labri.shelly.OptionGroup {
+public class Context implements fr.labri.shelly.Context {
 	final String _id;
 	final Class<?> _clazz;
-	final OptionGroup _parent;
+	final Context _parent;
 
 	final Constructor<?> _ctor;
 	final Field _superThis;
@@ -23,7 +23,7 @@ public class OptionGroup implements fr.labri.shelly.OptionGroup {
 	final List<Option> options = new ArrayList<Option>();
 	final List<ShellyItem> commands = new ArrayList<ShellyItem>();
 
-	public OptionGroup(OptionGroup parent, String name, Class<?> clazz) {
+	public Context(Context parent, String name, Class<?> clazz) {
 		_clazz = clazz;
 		_parent = parent;
 		_id = name;
@@ -148,7 +148,7 @@ public class OptionGroup implements fr.labri.shelly.OptionGroup {
 	}
 	
 	@Override
-	public fr.labri.shelly.OptionGroup getParent() {
+	public fr.labri.shelly.Context getParent() {
 		return _parent;
 	}
 
