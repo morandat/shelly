@@ -20,7 +20,7 @@ public class BasicTests {
 		@Test
 		static public void testLevel() {
 			Shell shell = Shell.createShell(SimpleProject.class);
-			shell.parseCommandLine(new String[]{"branch", "take"});
+			shell.parseCommandLine(new String[]{"--virt", "42",  "branch", "take"});
 			shell.parseCommandLine(new String[]{"--verbose", "ext", "branch", "--format", "42", "take", "--user", "user", "--pass", "pass"});
 			shell.parseCommandLine(new String[]{"--verbose", "ext", "describe", "--level", "42", "--verbose", "int", "yo", "man"});
 		}

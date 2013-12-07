@@ -73,6 +73,9 @@ public class ModelFactory {
 			for (Method m : clazz.getMethods())
 				if (m.isAnnotationPresent(CMD_CLASS))
 					grp.addCommand(newItem(m.getAnnotation(CMD_CLASS), m, grp));
+				else if (m.isAnnotationPresent(OPT_CLASS))
+						grp.addOption(newItem(m.getAnnotation(OPT_CLASS), m, grp));
+
 			for (Class<?> c : clazz.getClasses())
 				if (c.isAnnotationPresent(CMDGRP_CLASS))
 					grp.addCommand(newItem(c.getAnnotation(CMDGRP_CLASS), c, Modifier.isStatic(c.getModifiers()) ? null : grp));
@@ -80,9 +83,20 @@ public class ModelFactory {
 					grp.addCommand(newItem(c.getAnnotation(OPTGRP_CLASS), c, Modifier.isStatic(c.getModifiers()) ? null : grp));
 		}
 
+		protected Option newItem(fr.labri.shelly.annotations.Option annotation, Method method, fr.labri.shelly.Context parent) {
+			String name = !annotation.name().equals(fr.labri.shelly.annotations.Option.NO_NAME) ? annotation.name() : accessorName(method.getName());
+			return SimpleOption.build(loadFactory(annotation.factory()), parent, name, method);
+		}
+		
+		String accessorName(String str) {
+			if(str.startsWith("set"))
+				str = str.substring(3);
+			return str.toLowerCase();
+		}
+
 		protected Option newItem(fr.labri.shelly.annotations.Option annotation, Field field, fr.labri.shelly.Context parent) {
 			String name = !annotation.name().equals(fr.labri.shelly.annotations.Option.NO_NAME) ? annotation.name() : field.getName().toLowerCase();
-			return new SimpleOption(loadFactory(annotation.factory()), parent, name, field);
+			return SimpleOption.build(loadFactory(annotation.factory()), parent, name, field);
 		}
 
 		protected ShellyItem newItem(fr.labri.shelly.annotations.Command annotation, Method method, Context parent) {

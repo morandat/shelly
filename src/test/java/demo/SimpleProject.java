@@ -13,6 +13,11 @@ public class SimpleProject {
 	@Option(name = "verbose")
 	public String verbose;
 
+	@Option
+	public void setVirt(int val) {
+		System.err.println("42");
+	}
+
 	@Command(name = "help")
 	public void help() {
 		System.out.println("Contexte: " + verbose);

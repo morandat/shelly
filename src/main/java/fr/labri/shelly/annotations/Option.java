@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 import fr.labri.shelly.ConverterFactory;
 
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Option {
 	String name() default NO_NAME;
