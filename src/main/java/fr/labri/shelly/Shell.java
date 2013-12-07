@@ -5,8 +5,8 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import fr.labri.shelly.impl.HelpHelper;
-import fr.labri.shelly.impl.Context;
 import fr.labri.shelly.impl.ModelFactory;
+import fr.labri.shelly.impl.Parser;
 import fr.labri.shelly.impl.PeekIterator;
 
 public class Shell {
@@ -45,6 +45,6 @@ public class Shell {
 	}
 	
 	final public void parse(Iterator<String> cmdLine) {
-		grp.execute(null, new PeekIterator<>(cmdLine));
+		new Parser().execute(grp, new PeekIterator<>(cmdLine));
 	}
 }

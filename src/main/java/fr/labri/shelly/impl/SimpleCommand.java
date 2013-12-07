@@ -7,8 +7,8 @@ import fr.labri.shelly.Command;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Context;
-import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.Visitor;
+import fr.labri.shelly.impl.Visitor.InstVisitor;
 
 class SimpleCommand implements Command {
 	final Context _parent;
@@ -28,21 +28,16 @@ class SimpleCommand implements Command {
 			_converters[i++] = factory.getConverter(a, method);
 	}
 
-	public Command isValid(String str) {
-		return _id.equals(str) ? this : null;
+	public boolean isValid(String str) {
+		return _id.equals(str);
 	}
-
+	
 	public void apply(Object grp, String cmd, PeekIterator<String> cmdLine) {
 		try {
 			_method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(_converters, cmd, cmdLine));
 		} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
 			throw new RuntimeException(e);
 		}
-	}
-
-	public void parse(Object parent, String cmdText, PeekIterator<String> cmdLine) {
-		Object optGrp = _parent.fillOptions(parent, cmdLine);
-		apply(optGrp, cmdText, cmdLine);
 	}
 
 	public String[] getHelpString() {
@@ -62,7 +57,12 @@ class SimpleCommand implements Command {
 	}
 
 	@Override
-	public ShellyItem getParent() {
+	public Context getParent() {
 		return _parent;
+	}
+
+	@Override
+	public Object createContext(Object parent) {
+		return new InstVisitor().instantiate(this, parent);
 	}
 }

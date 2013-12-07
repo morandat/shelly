@@ -12,15 +12,17 @@ public class BasicTests {
 		}
 		
 		@Test
-		public void testParse() {
+		static public void testParse() {
 			Shell shell = Shell.createShell(SimpleProject.class);
 			shell.parseCommandLine(new String[]{"help"});
 		}
 
 		@Test
-		public void testLevel() {
+		static public void testLevel() {
 			Shell shell = Shell.createShell(SimpleProject.class);
-			shell.parseCommandLine(new String[]{"describe", "--level", "42", "yo", "man"});
+			shell.parseCommandLine(new String[]{"branch", "take"});
+			shell.parseCommandLine(new String[]{"--verbose", "ext", "branch", "--format", "42", "take", "--user", "user", "--pass", "pass"});
+			shell.parseCommandLine(new String[]{"--verbose", "ext", "describe", "--level", "42", "--verbose", "int", "yo", "man"});
 		}
 
 		@Test

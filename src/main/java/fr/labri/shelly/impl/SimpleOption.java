@@ -6,7 +6,6 @@ import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Context;
-import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.Visitor;
 
 class SimpleOption implements Option {
@@ -23,8 +22,8 @@ class SimpleOption implements Option {
 		_converter = factory.getConverter(field.getType(), field);
 	}
 
-	public ShellyItem isValid(String str) {
-		return str.equals("--" + _id) ? this : null;
+	public boolean isValid(String str) {
+		return ("--" + _id).equals(str);
 	}
 
 	public void apply(Object grp, String cmd, PeekIterator<String> cmdLine) {
@@ -44,10 +43,6 @@ class SimpleOption implements Option {
 	}
 
 	@Override
-	public void parse(Object parent, String cmdText, PeekIterator<String> cmdLine) {
-	}
-
-	@Override
 	public void visit_all(Visitor visitor) {
 	}
 	
@@ -57,7 +52,7 @@ class SimpleOption implements Option {
 	}
 	
 	@Override
-	public ShellyItem getParent() {
+	public Context getParent() {
 		return _parent;
 	}
 }

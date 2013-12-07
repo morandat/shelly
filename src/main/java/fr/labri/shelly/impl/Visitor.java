@@ -77,4 +77,28 @@ public class Visitor implements fr.labri.shelly.Visitor {
 			cmd.visit_commands(this);
 		}
 	}
+	
+	static class InstVisitor extends Visitor {
+		private Object group;
+		@Override
+		public void visit(Group cmdGroup) {
+		}
+		@Override
+		public void visit(Context ctx) {
+			visit_parent(ctx);
+			group = ctx.newGroup(group);
+		}
+		@Override
+		public void visit(Command cmdGroup) {
+			visit_parent(cmdGroup);
+		}
+		public Object instantiate(Command cmd, Object lastValidParent) {
+			group = lastValidParent;
+			if(cmd instanceof Group)
+				visit((Context) cmd);
+			else
+				cmd.accept(this);
+			return group;
+		}
+	}
 }

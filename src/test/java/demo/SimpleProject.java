@@ -37,7 +37,7 @@ public class SimpleProject {
 			public void describe(String v1, String v2) {
 				System.out.println("verbose(in): " + verbose);
 				System.out.println("level: " + level);
-				// System.out.println("verbose(out):" + SimpleProject.this.verbose);
+				System.out.println("verbose(out):" + SimpleProject.this.verbose);
 				System.out.println("Value is: " + v1 + "/" + v2);
 			}
 
@@ -59,15 +59,15 @@ public class SimpleProject {
 			@Option
 			public String pass;
 
-
-
 			@Context
 			public class UserInfo {
 				@Option
 				public String user;
 
 				@Command
-				public void take() {};
+				public void take() {
+					System.out.printf("u %s p %s, f %d v %s\n", user, pass, format, verbose);
+				};
 			}
 		}
 	}
