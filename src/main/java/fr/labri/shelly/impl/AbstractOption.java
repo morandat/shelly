@@ -27,10 +27,6 @@ public abstract class AbstractOption implements Option {
 		visitor.visit(this);
 	}
 
-	public String[] getHelpString() {
-		return new String[] { "--"+_id, _description };
-	}
-
 	@Override
 	public void visit_all(Visitor visitor) {
 	}
