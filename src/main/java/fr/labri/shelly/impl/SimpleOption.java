@@ -55,7 +55,7 @@ abstract class SimpleOption implements Option {
 	}
 
 	public String[] getHelpString() {
-		return new String[] { _id, _description };
+		return new String[] { "--"+_id, _description };
 	}
 
 	@Override

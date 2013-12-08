@@ -5,7 +5,7 @@ import java.util.Arrays;
 
 import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.impl.ConverterFactory;
-import fr.labri.shelly.impl.HelpHelper;
+import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Shell;
 
@@ -15,14 +15,16 @@ public class SimpleProject {
 	@Option(name = "verbose")
 	public String verbose;
 
+	int level = 0;
+
 	@Option
 	public void setVirt(int val) {
-		System.err.println("42");
+		level = val;
+		System.err.println(val);
 	}
 
-	@Default
 	@Command
-	public void help(String[] cmds) {
+	public void oldhelp(String[] cmds) {
 		Shell shell = Shell.createShell(SimpleProject.class);
 		if (cmds.length == 0) {
 			shell.printHelp();
@@ -38,9 +40,9 @@ public class SimpleProject {
 				}
 			}
 			if (parent instanceof fr.labri.shelly.Group)
-				HelpHelper.printHelp((fr.labri.shelly.Group) parent);
+				HelpFactory.printHelp((fr.labri.shelly.Group) parent);
 			else
-				HelpHelper.printHelp(parent);
+				HelpFactory.printHelp(parent);
 		}
 	}
 

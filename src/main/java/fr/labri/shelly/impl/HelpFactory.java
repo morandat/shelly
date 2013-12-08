@@ -3,21 +3,77 @@ package fr.labri.shelly.impl;
 import java.util.ArrayList;
 
 import fr.labri.shelly.Command;
-import fr.labri.shelly.Group;
 import fr.labri.shelly.Context;
+import fr.labri.shelly.Converter;
+import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
+import fr.labri.shelly.Group;
 import fr.labri.shelly.ShellyDescriptable;
 import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.impl.Visitor.CommandVisitor;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
 
-public class HelpHelper {
-	
+public abstract class HelpFactory {
+	static ConverterFactory converterfactory = new fr.labri.shelly.impl.ConverterFactory() {
+		public Converter<?> getConverter(Class<?> type, Object context) {
+			Converter<?> converter = super.getConverter(type, context);
+			return new ArrayConverter(converter);
+		}
+	};
+	public static final HelpFactory DEFAULT = new HelpFactory() {
+		@Override
+		void printHelp(Context Context, String[] cmds) {
+			if (cmds.length == 0) {
+				printHelp((Group) Context);
+			} else {
+				Command parent = (Group) Context;
+				for (int i = 0; i < cmds.length; i++) {
+					Command cmd = Shell.find_command(parent, cmds[i]);
+					if (cmd == null) {
+						System.out.println("No topic " + cmds[i]);
+						break;
+					} else {
+						parent = cmd;
+					}
+				}
+				if (parent instanceof Group)
+					printHelp((Group) parent);
+				else
+					printHelp(parent);
+			}
+		}
+
+	};
+
+	abstract void printHelp(Context shell, String[] cmds);
+
+	static public Command helpCommand(Context parent, final String name) {
+		return helpCommand(parent, name, true);
+	}
+
+	static public Command helpCommand(Context parent, final String name, final boolean defaultcmd) {
+		return helpCommand(DEFAULT, parent, name, defaultcmd);
+	}
+
+	static public Command helpCommand(final HelpFactory factory, Context parent, final String name, final boolean defaultcmd) {
+		return new AbstractCommand(name, parent, converterfactory, new Class<?>[] { String.class }) {
+			@Override
+			public void apply(Object receive, String next, PeekIterator<String> _cmdline) {
+				factory.printHelp(_parent, (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(_converters, next, _cmdline)[0]);
+			}
+
+			@Override
+			public boolean isDefault() {
+				return defaultcmd;
+			}
+		};
+	}
+
 	public static void printHelp(Shell shell) {
 		printHelp(shell.getGroup());
 	}
-	
+
 	public static void printHelp(Group grp) {
 		System.out.println("Options:");
 		for (String[] help : new HelpOptionVisitor().getHelp(grp))
@@ -37,8 +93,7 @@ public class HelpHelper {
 		for (String[] opt : new HelpAcceptedOptionVisitor().getHelp(cmd))
 			System.out.printf("\t%s:\t%s\n", opt[0], opt[1]);
 	}
-	
-	
+
 	interface HelpFormater {
 		String format(String helpText[]);
 	}
@@ -46,30 +101,32 @@ public class HelpHelper {
 	static final HelpFormater formater = new HelpFormater() {
 		@Override
 		public String format(String helpText[]) {
-			assert(helpText != null && helpText.length == 2);
+			assert (helpText != null && helpText.length == 2);
 			return String.format("\t%s:\t%s\n", helpText[0], helpText[1]);
 		}
 	};
-	
+
 	static class HelpAcceptedOptionVisitor extends OptionVisitor {
 		HelpVisitor help = new HelpVisitor();
+
 		public void visit(Option opt) {
 			help.addHelp(opt);
 		}
+
 		public String[][] getHelp(Command item) {
 			item.accept(this);
 			return help.getHelp(this, item);
 		}
 	}
-	
+
 	static class HelpOptionVisitor extends Visitor {
 		HelpVisitor help = new HelpVisitor();
-		
+
 		@Override
 		public void visit(Context grp) {
 			grp.visit_options(this);
 		}
-		
+
 		@Override
 		public void visit(Group grp) {
 		}
@@ -78,9 +135,9 @@ public class HelpHelper {
 		public void visit(Option opt) {
 			help.addHelp(opt);
 		}
-		
+
 		public String[][] getHelp(Group item) {
-			((fr.labri.shelly.impl.Group)item).visit_options(this);
+			((fr.labri.shelly.impl.Group) item).visit_options(this);
 			return help.getHelp(this, item);
 		}
 	}
@@ -94,7 +151,7 @@ public class HelpHelper {
 		}
 
 		public String[][] getHelp(Group item) {
-			this.visit((fr.labri.shelly.impl.Context)item);
+			this.visit((fr.labri.shelly.impl.Context) item);
 			return help.getHelp(this, item);
 		}
 	}
@@ -103,14 +160,15 @@ public class HelpHelper {
 		ArrayList<String[]> help = new ArrayList<>();
 
 		void addHelp(String name, String desc) {
-			addHelp(new String[]{name, desc});
+			addHelp(new String[] { name, desc });
 		}
-		
+
 		void addHelp(ShellyDescriptable item) {
 			addHelp(item.getHelpString());
 		}
+
 		void addHelp(String[] strings) {
-			if(strings != null)
+			if (strings != null)
 				help.add(strings);
 		}
 

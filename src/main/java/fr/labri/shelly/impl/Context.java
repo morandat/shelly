@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import fr.labri.shelly.Command;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.Visitor;
@@ -121,5 +122,10 @@ public class Context implements fr.labri.shelly.Context {
 	@Override
 	public Iterable<Option> getOptions() {
 		return options;
+	}
+
+	@Override
+	public void addCommand(Command cmd) {
+		commands.add(cmd);
 	}
 }

@@ -12,4 +12,6 @@ public interface Context extends ShellyItem {
 
 	public abstract Iterable<Option> getOptions();
 
+	void addCommand(Command cmd);
+	void addOption(Option opt);
 }

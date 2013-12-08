@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
-import fr.labri.shelly.impl.HelpHelper;
+import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelFactory;
 import fr.labri.shelly.impl.Parser;
 import fr.labri.shelly.impl.Visitor;
@@ -35,7 +35,7 @@ public class Shell {
 		return grp;
 	}
 	public void printHelp() {
-		HelpHelper.printHelp(this);
+		HelpFactory.printHelp(this);
 	}
 	public static void printHelp(Class<?> clazz) {
 		printHelp(ModelFactory.DEFAULT, clazz);
@@ -60,6 +60,9 @@ public class Shell {
 	public void loop(InputStream inputStream) throws IOException {
 		BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
 		String line;
+		String prompt = String.format("%s> ", grp.getID());
+		System.out.print(prompt);
+		System.out.flush();
 		while ((line = in.readLine()) != null) {
 			try {
 				parseCommandLine(line.split(" "));
@@ -68,6 +71,8 @@ public class Shell {
 			} catch (Exception e) {
 				System.err.println(e.getMessage());
 			}
+			System.out.print(prompt);
+			System.out.flush();
 		}
 	}
 	
