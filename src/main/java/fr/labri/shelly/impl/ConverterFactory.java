@@ -21,7 +21,6 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 	}
 
 	public Converter<?> getArrayConverter(Class<?> type, Object context) {
-		System.out.println("Array " + type+"of => " + type.getComponentType());
 		return new ArrayConverter(getConverter(type.getComponentType(), context));
 	}
 

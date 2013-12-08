@@ -6,6 +6,7 @@ import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.ShellyItem;
+import fr.labri.shelly.impl.Visitor.OptionVisitor;
 
 public class Parser {
 	PeekIterator<String> _cmdline;
@@ -19,19 +20,19 @@ public class Parser {
 		Object ctx = parser.fillOptions(start, start.newGroup(null));
 		Command cmd = start;
 		Command last = cmd;
-		
-		while((cmd = Shell.find_command(last = cmd, parser._cmdline.peek())) != null)
+
+		while ((cmd = Shell.find_command(last = cmd, parser._cmdline.peek())) != null)
 			ctx = parser.executeCommand(parser._cmdline.next(), cmd, ctx);
-		if(last instanceof Group)
-			parser.executeDefault((Group)last, ctx);
+		if (last instanceof Group)
+			parser.executeDefault((Group) last, ctx);
 	}
-	
+
 	private void executeDefault(Group subCmd, Object parent) {
 		Command dflt = subCmd.getDefault();
-		if(dflt != null)
+		if (dflt != null)
 			executeCommand(null, dflt, parent);
 	}
-	
+
 	private Object executeCommand(String txt, Command subCmd, Object parent) {
 		parent = subCmd.createContext(parent);
 		parent = fillOptions(subCmd, parent);
@@ -40,12 +41,13 @@ public class Parser {
 	}
 
 	private Object fillOptions(Command subCmd, Object parent) {
-		while (new OptionParserVisitor().visit_options(subCmd, parent))
+		while (new OptionParserVisitor().find_option(subCmd, parent))
 			;
 		return parent;
 	}
 
-	class OptionParserVisitor extends Visitor {
+
+	class OptionParserVisitor extends OptionVisitor {
 		Object receive;
 
 		@Override
@@ -53,25 +55,15 @@ public class Parser {
 			receive = null;
 		}
 
-		@Override
-		public void visit(Group grp) {
+		public void visit(Option opt) {
+			if (opt.isValid(_cmdline.peek())) {
+				throw new FoundOption(opt);
+			}
 		}
 
-		private void searchOpt(Context grp) {
-			for (Option opt : grp.getOptions())
-				if (opt.isValid(_cmdline.peek())) {
-					opt.apply(receive, _cmdline.next(), _cmdline);
-					throw new FoundOption(opt);
-				}
-		}
-		
-		public void visit(Command grp) {
-			grp.getParent().accept(this);;
-		}
-		
 		@Override
 		public void visit(Context grp) {
-			searchOpt(grp);
+			grp.visit_options(this);
 
 			Context p = grp.getParent();
 			if (p != null) {
@@ -80,27 +72,16 @@ public class Parser {
 			}
 		}
 
-		public boolean visit_options(Command cmd, Object group) {
+		public boolean find_option(Command cmd, Object group) {
 			receive = group;
 			try {
-				if(cmd instanceof Group) {
-					visit((Context)cmd);
-				} else
-					cmd.accept(this);
+				visit_options(cmd);
 				return false;
 			} catch (FoundOption e) {
+				e.opt.apply(receive, _cmdline.next(), _cmdline);
 				return true;
 			}
 		}
 
-	}
-
-	@SuppressWarnings("serial")
-	static class FoundOption extends RuntimeException {
-		Option opt;
-
-		public FoundOption(Option opt) {
-			this.opt = opt;
-		}
 	}
 }

@@ -5,6 +5,7 @@ import java.util.Arrays;
 
 import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.impl.ConverterFactory;
+import fr.labri.shelly.impl.HelpHelper;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Shell;
 
@@ -21,21 +22,38 @@ public class SimpleProject {
 
 	@Default
 	@Command
-	public void help() {
-		System.out.println("Contexte: " + verbose);
-		Shell.printHelp(SimpleProject.class);
+	public void help(String[] cmds) {
+		Shell shell = Shell.createShell(SimpleProject.class);
+		if (cmds.length == 0) {
+			shell.printHelp();
+		} else {
+			fr.labri.shelly.Command parent = shell.getGroup();
+			for (int i = 0; i < cmds.length; i++) {
+				fr.labri.shelly.Command cmd = Shell.find_command(parent, cmds[i]);
+				if (cmd == null) {
+					System.out.println("No topic " + cmds[i]);
+					break;
+				} else {
+					parent = cmd;
+				}
+			}
+			if (parent instanceof fr.labri.shelly.Group)
+				HelpHelper.printHelp((fr.labri.shelly.Group) parent);
+			else
+				HelpHelper.printHelp(parent);
+		}
 	}
 
 	@Command
 	public void echo(String data[]) {
 		System.out.println(Arrays.toString(data));
 	}
-	
+
 	@Command
 	public void ints(Integer data[]) {
 		System.out.println(Arrays.toString(data));
 	}
-	
+
 	@Context
 	public class HelpCmds {
 		@Option
@@ -68,12 +86,13 @@ public class SimpleProject {
 	public class Branch {
 		@Option
 		public int format;
-		
+
 		@Default
 		@Command
 		public void list() {
 			System.out.println("default !!!!!");
 		}
+
 		@Context
 		public class PasswordInfo {
 			@Option
@@ -101,11 +120,11 @@ public class SimpleProject {
 		public Converter<?> getObjectConverter(Class<?> type) {
 			if (type.isAssignableFrom(Color.class))
 				return new SimpleConverter<Color>() {
-				@Override
-				public Color convert(String value) {
-					return new Color(253); //
-				}
-			};
+					@Override
+					public Color convert(String value) {
+						return new Color(253); //
+					}
+				};
 			return super.getObjectConverter(type);
 		}
 	}

@@ -48,22 +48,28 @@ public class Visitor implements fr.labri.shelly.Visitor {
 		}
 	}
 	
-	static class OptionVisitor extends Visitor {
-		@Override
-		public void visit(ShellyItem item) {
-			visit_parent(item);
+	public static class OptionVisitor extends Visitor {
+		public void visit(Group grp) {
 		}
-		
+
+		public void visit(Command grp) {
+			visit_parent(grp);
+		}
+
 		@Override
 		public void visit(Context grp) {
 			grp.visit_options(this);
 			visit_parent(grp);
 		}
-		
-		@Override
-		public void visit(Group grp) {
+
+		public void visit_options(Command cmd) {
+			if (cmd instanceof Group) {
+				visit((Context) cmd);
+			} else
+				cmd.accept(this);
 		}
 	}
+
 	
 	public static class CommandVisitor extends Visitor {
 		
@@ -83,6 +89,16 @@ public class Visitor implements fr.labri.shelly.Visitor {
 
 		public FoundCommand(Command cmd) {
 			this.cmd = cmd;
+		}
+	}
+	
+
+	@SuppressWarnings("serial")
+	public static class FoundOption extends RuntimeException {
+		public Option opt;
+
+		public FoundOption(Option opt) {
+			this.opt = opt;
 		}
 	}
 	static class InstVisitor extends Visitor {
