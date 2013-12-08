@@ -1,31 +1,182 @@
 package fr.labri.shelly.impl;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Context;
-import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
+import fr.labri.shelly.Description;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.ShellyDescriptable;
-import fr.labri.shelly.ShellyItem;
-import fr.labri.shelly.impl.Visitor.CommandVisitor;
-import fr.labri.shelly.impl.Visitor.OptionVisitor;
+import fr.labri.shelly.impl.AbstractCommand.CommandAdapter;
 
-public abstract class HelpFactory {
-	static ConverterFactory converterfactory = new fr.labri.shelly.impl.ConverterFactory() {
-		public Converter<?> getConverter(Class<?> type, Object context) {
-			Converter<?> converter = super.getConverter(type, context);
-			return new ArrayConverter(converter);
+public class HelpFactory {
+	public interface HelpNavigator {
+		public abstract ShellyDescriptable printHelp(Context context, String[] cmds);
+	}
+
+	public interface HelpRenderer {
+		public abstract Help getHelp(ShellyDescriptable item);
+	}
+
+	public interface HelpFormater {
+		String renderHelp(Help helpText);
+
+		void renderHelp(PrintStream out, Help helpText);
+	}
+
+	public static void printHelp(ShellyDescriptable item, PrintStream out) {
+		printHelp(item, out, FORMATER, RENDERER);
+	}
+
+	public static void printHelp(ShellyDescriptable item, PrintStream out, HelpFormater formater, HelpRenderer renderer) {
+		formater.renderHelp(out, renderer.getHelp(item));
+	}
+
+	static public Command getHelpCommand(Context parent) {
+		return getHelpCommand(parent, "help", true, ConverterFactory.DEFAULT);
+	}
+
+	static public Command getHelpCommand(Context parent, final String name, final boolean defaultcmd, ConverterFactory factory) {
+		return getHelpCommand(parent, name, defaultcmd, factory, NAVIGATOR, FORMATER, RENDERER);
+	}
+
+	static public Command getHelpCommand(Context parent, final String name, final boolean defaultcmd, ConverterFactory factory, final HelpNavigator navigator,
+			final HelpFormater formater, final HelpRenderer renderer) {
+		return AbstractCommand.getCommand(name, parent, fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class), new CommandAdapter() {
+			@Override
+			public void apply(AbstractCommand cmd, Object receive, String next, PeekIterator<String> cmdline) {
+				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(cmd._converters, next, cmdline)[0]; // FIXME
+																																	// not
+				ShellyDescriptable item = navigator.printHelp(cmd.getParent(), args);
+				printHelp(item, System.err, formater, renderer);
+			}
+
+			@Override
+			public boolean isDefault() {
+				return defaultcmd;
+			}
+
+			@Override
+			public Description getDescription() {
+				return HELP_DESCRIPTION;
+			}
+		});
+	}
+
+	static final HelpFormater FORMATER = new SimpleFormater<Integer>() {
+
+		public String format(String helpText[], Integer layout) {
+			switch (helpText.length) {
+			case 0:
+				return "";
+			case 1:
+				return String.format("%s\n", helpText[0]);
+			case 2:
+				int i = layout - helpText[0].length() + 1;
+				String s = new String(new char[i]).replace("\0", " ");
+				return String.format("%s%s%s\n", helpText[0], s, helpText[1]);
+			default:
+				return join(helpText);
+			}
+		}
+
+		public String join(String[] strs) {
+			StringBuilder sb = new StringBuilder();
+			for (String s : strs)
+				sb.append(s);
+			sb.append("\n");
+			return sb.toString();
+		}
+
+		@Override
+		Integer makeLayout(Help helpText) {
+			int i = 0;
+			for (String[] l : helpText)
+				if (l.length == 2) {
+					int len = l[0].length();
+					i = (len > i) ? len : i;
+				}
+			return i;
 		}
 	};
-	public static final HelpFactory DEFAULT = new HelpFactory() {
+
+	static final HelpRenderer RENDERER = new HelpRenderer() {
 		@Override
-		void printHelp(Context Context, String[] cmds) {
+		public Help getHelp(ShellyDescriptable item) {
+			final Help help = new Help();
+			item.accept(new Visitor() {
+				public void visit(Group grp) {
+					help.addTitle("Description");
+					help.addLongHelp(grp);
+
+					help.addTitle("Options");
+					new OptionVisitor() {
+						public void visit(Option option) {
+							help.addShortHelp(option);
+						}
+					}.visit_options(grp);
+
+					help.addTitle("Commands");
+					new CommandVisitor() {
+						public void visit(Command cmd) {
+							help.addShortHelp(cmd);
+						}
+					}.visit_commands(grp);
+				}
+
+				public void visit(Command cmd) {
+					help.addTitle("Description");
+					help.addLongHelp(cmd);
+
+					help.addTitle("Option");
+					new OptionVisitor() {
+						public void visit(Option option) {
+							help.addShortHelp(option);
+						}
+					}.visit_options(cmd);
+				}
+
+				public void visit(Option opt) {
+					help.addTitle("Description");
+					help.addLongHelp(opt);
+				}
+			});
+			return help;
+		}
+	};
+
+	static abstract class SimpleFormater<L> implements HelpFormater {
+		@Override
+		public String renderHelp(Help helpText) {
+			L layout = makeLayout(helpText);
+			StringBuilder sb = new StringBuilder();
+			for (String[] l : helpText)
+				sb.append(format(l, layout));
+			return sb.toString();
+		}
+
+		@Override
+		public void renderHelp(PrintStream out, Help helpText) {
+			L layout = makeLayout(helpText);
+			for (String[] l : helpText)
+				out.print(format(l, layout));
+		}
+
+		abstract L makeLayout(Help helpText);
+
+		public abstract String format(String helpText[], L layout);
+	}
+
+	public static final HelpNavigator NAVIGATOR = new HelpNavigator() {
+		@Override
+		public ShellyDescriptable printHelp(Context Context, String[] cmds) {
 			if (cmds.length == 0) {
-				printHelp((Group) Context);
+				return (Group) Context;
 			} else {
 				Command parent = (Group) Context;
 				for (int i = 0; i < cmds.length; i++) {
@@ -37,145 +188,58 @@ public abstract class HelpFactory {
 						parent = cmd;
 					}
 				}
-				if (parent instanceof Group)
-					printHelp((Group) parent);
-				else
-					printHelp(parent);
+				return parent;
 			}
-		}
-
-	};
-
-	abstract void printHelp(Context shell, String[] cmds);
-
-	static public Command helpCommand(Context parent, final String name) {
-		return helpCommand(parent, name, true);
-	}
-
-	static public Command helpCommand(Context parent, final String name, final boolean defaultcmd) {
-		return helpCommand(DEFAULT, parent, name, defaultcmd);
-	}
-
-	static public Command helpCommand(final HelpFactory factory, Context parent, final String name, final boolean defaultcmd) {
-		return new AbstractCommand(name, parent, converterfactory, new Class<?>[] { String.class }) {
-			@Override
-			public void apply(Object receive, String next, PeekIterator<String> _cmdline) {
-				factory.printHelp(_parent, (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(_converters, next, _cmdline)[0]);
-			}
-
-			@Override
-			public boolean isDefault() {
-				return defaultcmd;
-			}
-		};
-	}
-
-	public static void printHelp(Shell shell) {
-		printHelp(shell.getGroup());
-	}
-
-	public static void printHelp(Group grp) {
-		System.out.println("Options:");
-		for (String[] help : new HelpOptionVisitor().getHelp(grp))
-			System.out.print(formater.format(help));
-
-		System.out.println("Commands:");
-		for (String[] help : new HelpCommandVisitor().getHelp(grp))
-			System.out.print(formater.format(help));
-	}
-
-	public static void printHelp(Command cmd) {
-		String help[] = cmd.getHelpString();
-		System.out.println("Description: " + help[0]);
-		System.out.println(help[1]);
-		System.out.println("Options:");
-
-		for (String[] opt : new HelpAcceptedOptionVisitor().getHelp(cmd))
-			System.out.printf("\t%s:\t%s\n", opt[0], opt[1]);
-	}
-
-	interface HelpFormater {
-		String format(String helpText[]);
-	}
-
-	static final HelpFormater formater = new HelpFormater() {
-		@Override
-		public String format(String helpText[]) {
-			assert (helpText != null && helpText.length == 2);
-			return String.format("\t%s:\t%s\n", helpText[0], helpText[1]);
 		}
 	};
-
-	static class HelpAcceptedOptionVisitor extends OptionVisitor {
-		HelpVisitor help = new HelpVisitor();
-
-		public void visit(Option opt) {
-			help.addHelp(opt);
-		}
-
-		public String[][] getHelp(Command item) {
-			item.accept(this);
-			return help.getHelp(this, item);
-		}
-	}
-
-	static class HelpOptionVisitor extends Visitor {
-		HelpVisitor help = new HelpVisitor();
-
+	static final Description HELP_DESCRIPTION = new Description() {
 		@Override
-		public void visit(Context grp) {
-			grp.visit_options(this);
+		public String getShortDescription() {
+			return "Give an help message";
 		}
-
+		
 		@Override
-		public void visit(Group grp) {
+		public String getLongDescription() {
+			return getShortDescription();
 		}
-
-		@Override
-		public void visit(Option opt) {
-			help.addHelp(opt);
-		}
-
-		public String[][] getHelp(Group item) {
-			((fr.labri.shelly.impl.Group) item).visit_options(this);
-			return help.getHelp(this, item);
-		}
-	}
-
-	static class HelpCommandVisitor extends CommandVisitor {
-		HelpVisitor help = new HelpVisitor();
-
-		@Override
-		public void visit(Command cmd) {
-			help.addHelp(cmd);
-		}
-
-		public String[][] getHelp(Group item) {
-			this.visit((fr.labri.shelly.impl.Context) item);
-			return help.getHelp(this, item);
-		}
-	}
-
-	static class HelpVisitor {
+	};
+	static class Help implements Iterable<String[]> {
 		ArrayList<String[]> help = new ArrayList<>();
+
+		void addHelp(String line) {
+			addHelp(new String[] { line });
+		}
 
 		void addHelp(String name, String desc) {
 			addHelp(new String[] { name, desc });
 		}
-
-		void addHelp(ShellyDescriptable item) {
-			addHelp(item.getHelpString());
+		
+		void addTitle(String title) {
+			addHelp(title);
+			String s = new String(new char[title.length()]).replace("\0", "-");
+			addHelp(s);
 		}
 
-		void addHelp(String[] strings) {
+		void addLongHelp(ShellyDescriptable item) {
+			addHelp(item.getDescription().getLongDescription());
+		}
+
+		void addShortHelp(ShellyDescriptable item) {
+			addHelp(item.getID(), item.getDescription().getLongDescription());
+		}
+
+		void addShortHelp(String id, Description description) {
+			addHelp(id, description.getShortDescription());
+		}
+
+		private void addHelp(String[] strings) {
 			if (strings != null)
 				help.add(strings);
 		}
 
-		String[][] getHelp(Visitor visitor, ShellyItem item) {
-			String[][] res = new String[help.size()][];
-			help.toArray(res);
-			return res;
+		@Override
+		public Iterator<String[]> iterator() {
+			return help.iterator();
 		}
 	}
 }

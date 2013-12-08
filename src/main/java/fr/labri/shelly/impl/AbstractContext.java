@@ -7,26 +7,28 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import fr.labri.shelly.Command;
+import fr.labri.shelly.Context;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.Visitor;
 
-public class Context implements fr.labri.shelly.Context {
-	final String _id;
-	final Class<?> _clazz;
-	final fr.labri.shelly.Context _parent;
+public abstract class AbstractContext implements Context {
 
-	final Constructor<?> _ctor;
+	protected final String _id;
+	protected final fr.labri.shelly.Context _parent;
+
+	protected final Class<?> _clazz;
 	final Field _superThis;
+	final Constructor<?> _ctor;
 
 	private final List<Option> options = new ArrayList<Option>();
-	final List<ShellyItem> commands = new ArrayList<ShellyItem>();
+	private final List<ShellyItem> commands = new ArrayList<ShellyItem>();
 
-	public Context(fr.labri.shelly.Context parent, String name, Class<?> clazz) {
-		_clazz = clazz;
+	public AbstractContext(Context parent, String name, Class<?> clazz) {
 		_parent = parent;
 		_id = name;
+		_clazz = clazz;
+		
 		try {
 			Constructor<?> ctor;
 			if (clazz.getEnclosingClass() != null) {
@@ -43,17 +45,6 @@ public class Context implements fr.labri.shelly.Context {
 		}
 	}
 
-	public Object newGroup(Object parent) {
-		try {
-			if (_superThis != null) {
-				return _ctor.newInstance(parent);
-			} else {
-				return _ctor.newInstance();
-			}
-		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-			throw new RuntimeException(e);
-		}
-	}
 
 	public void addOption(Option option) {
 		options.add(option);
@@ -66,22 +57,6 @@ public class Context implements fr.labri.shelly.Context {
 	@Override
 	public boolean isValid(String str) {
 		return getID().equals(str);
-	}
-
-	public Object getEnclosing(Object obj) {
-		try {
-			return _superThis.get(obj);
-		} catch (IllegalArgumentException | IllegalAccessException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	public static Field getSuperThisField(Class<?> c) {
-		Field[] fields = c.getDeclaredFields();
-		for (Field f : fields)
-			if (f.getName().startsWith("this$"))
-				return f;
-		throw new RuntimeException("This class has no enclosing class.\n" + Arrays.toString(fields));
 	}
 
 	public void accept(Visitor visitor) {
@@ -110,7 +85,7 @@ public class Context implements fr.labri.shelly.Context {
 	}
 
 	@Override
-	public fr.labri.shelly.Context getParent() {
+	public Context getParent() {
 		return _parent;
 	}
 
@@ -125,7 +100,45 @@ public class Context implements fr.labri.shelly.Context {
 	}
 
 	@Override
-	public void addCommand(Command cmd) {
-		commands.add(cmd);
+	public Iterable<ShellyItem> getItems() {
+		return commands;
+	}
+	
+	@Override
+	public Object newGroup(Object parent) {
+		try {
+			if (_superThis != null) {
+				return _ctor.newInstance(parent);
+			} else {
+				return _ctor.newInstance();
+			}
+		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	@Override
+	public Object getEnclosing(Object obj) {
+		try {
+			return _superThis.get(obj);
+		} catch (IllegalArgumentException | IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static Field getSuperThisField(Class<?> c) {
+		Field[] fields = c.getDeclaredFields();
+		for (Field f : fields)
+			if (f.getName().startsWith("this$"))
+				return f;
+		throw new RuntimeException("This class has no enclosing class.\n" + Arrays.toString(fields));
+	}
+	
+	static Context getContext(String name, Context parent, Class<?> clazz, final ContextAdapter adapter) {
+		return new AbstractContext(parent, name, clazz) {
+		};
+	}
+
+	public interface ContextAdapter {
 	}
 }

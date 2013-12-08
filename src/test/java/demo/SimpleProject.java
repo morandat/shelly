@@ -17,19 +17,20 @@ public class SimpleProject {
 
 	int level = 0;
 
-	@Option
+	@Option(summary="an accessor exemple")
 	public void setVirt(int val) {
 		level = val;
 		System.err.println(val);
 	}
 
 	@Command
+	@Description(summary="a another short ex.")
 	public void oldhelp(String[] cmds) {
 		Shell shell = Shell.createShell(SimpleProject.class);
 		if (cmds.length == 0) {
-			shell.printHelp();
+			shell.printHelp(System.out);
 		} else {
-			fr.labri.shelly.Command parent = shell.getGroup();
+			fr.labri.shelly.Command parent = shell.getRoot();
 			for (int i = 0; i < cmds.length; i++) {
 				fr.labri.shelly.Command cmd = Shell.find_command(parent, cmds[i]);
 				if (cmd == null) {
@@ -39,14 +40,18 @@ public class SimpleProject {
 					parent = cmd;
 				}
 			}
-			if (parent instanceof fr.labri.shelly.Group)
-				HelpFactory.printHelp((fr.labri.shelly.Group) parent);
-			else
-				HelpFactory.printHelp(parent);
+			HelpFactory.printHelp(parent, System.out);
 		}
 	}
-
-	@Command
+	
+	@Command(summary="short way to go")
+	@Description("A more long way to go !")
+	public void newoldhelp(String[] cmds) {
+		HelpFactory.NAVIGATOR.printHelp(Shell.createShell(SimpleProject.class).getRoot(), cmds);
+	}
+	
+	@Command(summary = "Some short text")
+	@Description(url = "!echo.txt")
 	public void echo(String data[]) {
 		System.out.println(Arrays.toString(data));
 	}

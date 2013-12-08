@@ -91,7 +91,25 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 
 		public abstract T convert(String value);
 	}
+	
 
+	public static Converter<?>[] getConverters(final fr.labri.shelly.ConverterFactory factory, Class<?> param) {
+		return new Converter[] { new fr.labri.shelly.impl.ConverterFactory() {
+			public Converter<?> getConverter(Class<?> type, Object context) {
+				Converter<?> converter = factory.getConverter(type, context);
+				return new ArrayConverter(converter);
+			}
+		}.getConverter(param, param) };
+	}
+	
+	static Converter<?>[] getConverters(fr.labri.shelly.ConverterFactory factory, Class<?>[] params) {
+		int i = 0;
+		Converter<?>[] converters = new Converter<?>[params.length];
+		for (Class<?> a : params)
+			converters[i++] = factory.getConverter(a, params);
+		return converters;
+	}
+	
 	public static Object[] convertArray(Converter<?>[] converters, String cmd, PeekIterator<String> cmdLine) {
 		Object[] args = new Object[converters.length];
 		for (int i = 0; i < converters.length; i++)

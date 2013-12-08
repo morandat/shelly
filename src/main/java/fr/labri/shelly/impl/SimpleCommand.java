@@ -4,26 +4,35 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import fr.labri.shelly.ConverterFactory;
+import fr.labri.shelly.Description;
+import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.Context;
+import fr.labri.shelly.annotations.AnnotationUtils;
 import fr.labri.shelly.annotations.Default;
+import fr.labri.shelly.impl.AbstractCommand.CommandAdapter;
 
-class SimpleCommand extends AbstractCommand {
-	final Method _method;
-	SimpleCommand(ConverterFactory factory, Context parent, String name, Method method) {
-		super(name, parent, factory, method.getParameterTypes());
-		_method = method;
-	}
+class CommandFactory {
+	public static ShellyItem build(ConverterFactory loadFactory, Context parent, String name, final Method method) {
+		return AbstractCommand.getCommand(name, parent, fr.labri.shelly.impl.ConverterFactory.getConverters(loadFactory, method.getParameterTypes()), new CommandAdapter() {
+			
+			@Override
+			public boolean isDefault() {
+				return method.isAnnotationPresent(Default.class);
+			}
+			
+			@Override
+			public void apply(AbstractCommand cmd, Object grp, String text, PeekIterator<String> cmdLine) {
+				try {
+					method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(cmd._converters, text, cmdLine));
+				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					throw new RuntimeException(e);
+				}
+			}
 
-	@Override
-	public boolean isDefault() {
-		return _method.isAnnotationPresent(Default.class);
-	}
-	
-	public void apply(Object grp, String cmd, PeekIterator<String> cmdLine) {
-		try {
-			_method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(_converters, cmd, cmdLine));
-		} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
-			throw new RuntimeException(e);
-		}
+			@Override
+			public Description getDescription() {
+				return DescriptionFactory.getDescription(method, AnnotationUtils.getCommandSummary(method));
+			}
+		});
 	}
 }

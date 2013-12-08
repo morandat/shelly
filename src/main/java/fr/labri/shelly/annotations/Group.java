@@ -11,4 +11,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Group {
 	String name() default Option.NO_NAME;
+	String summary() default Option.NO_NAME;
 }

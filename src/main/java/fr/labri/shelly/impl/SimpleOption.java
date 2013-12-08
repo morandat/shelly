@@ -4,71 +4,47 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
-import fr.labri.shelly.Option;
 import fr.labri.shelly.Context;
-import fr.labri.shelly.Visitor;
+import fr.labri.shelly.Description;
+import fr.labri.shelly.annotations.AnnotationUtils;
+import fr.labri.shelly.impl.AbstractOption.OptionAdapter;
 
-abstract class SimpleOption implements Option {
-	final String _id;
-	final Context _parent;
-	final String _description = "No description";
-	final Converter<?> _converter;
+class OptionFactory {
 
-	SimpleOption(Converter<?> converter, Context parent, String name) {
-		_id = name;
-		_parent = parent;
-		_converter = converter;
-	}
-
-	static SimpleOption build(ConverterFactory factory, Context parent, String name, final Field field) {
-		return new SimpleOption(factory.getConverter(field.getType(), name), parent, name) {
-			public void apply(Object grp, String cmd, PeekIterator<String> cmdLine) {
+	static AbstractOption build(ConverterFactory factory, Context parent, String name, final Field field) {
+		return AbstractOption.getOption(name, parent, factory.getConverter(field.getType(), name), new OptionAdapter() {
+			@Override
+			public void apply(AbstractOption opt, Object receive, String next, PeekIterator<String> cmdline) {
 				try {
-					field.set(grp, _converter.convert(cmd, cmdLine));
+					field.set(receive, opt._converter.convert(next, cmdline));
 				} catch (IllegalArgumentException | IllegalAccessException e) {
 					throw new RuntimeException(e);
 				}
+				
 			}
-		};
+
+			@Override
+			public Description getDescription() {
+				return DescriptionFactory.getDescription(field, AnnotationUtils.getOptionSummary(field));
+			}
+		});
 	}
-	
-	static SimpleOption build(ConverterFactory factory, Context parent, String name, final Method method) {
-		return new SimpleOption(factory.getConverter(method.getParameterTypes()[0], name), parent, name) { // FIXME, ensure it works
-			public void apply(Object grp, String cmd, PeekIterator<String> cmdLine) {
+
+	static AbstractOption build(ConverterFactory factory, Context parent, String name, final Method method) {
+		return AbstractOption.getOption(name, parent, factory.getConverter(method.getParameterTypes()[0], name), new OptionAdapter() { // FIXME not robust
+			@Override
+			public void apply(AbstractOption opt, Object receive, String next, PeekIterator<String> cmdline) {
 				try {
-					method.invoke(grp, _converter.convert(cmd, cmdLine));
+					method.invoke(receive, opt._converter.convert(next, cmdline));
 				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
 					throw new RuntimeException(e);
 				}
 			}
-		};
-	}
-	public boolean isValid(String str) {
-		return ("--" + _id).equals(str);
-	}
-
-
-	public void accept(Visitor visitor) {
-		visitor.visit(this);
-	}
-
-	public String[] getHelpString() {
-		return new String[] { "--"+_id, _description };
-	}
-
-	@Override
-	public void visit_all(Visitor visitor) {
-	}
-	
-
-	public String getID() {
-		return _id;
-	}
-	
-	@Override
-	public Context getParent() {
-		return _parent;
-	}
+			@Override
+			public Description getDescription() {
+				return DescriptionFactory.getDescription(method, AnnotationUtils.getOptionSummary(method));
+			}
+		});
+	};
 }

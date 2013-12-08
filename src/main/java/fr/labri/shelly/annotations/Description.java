@@ -5,12 +5,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import fr.labri.shelly.ConverterFactory;
-
-@Target(ElementType.METHOD)
+@Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Command{
-	String name() default Option.NO_NAME;
+public @interface Description {
+	String value() default Option.NO_NAME;
+	String url() default Option.NO_NAME;
 	String summary() default Option.NO_NAME;
-	Class<? extends ConverterFactory> factory() default fr.labri.shelly.impl.ConverterFactory.class;
 }

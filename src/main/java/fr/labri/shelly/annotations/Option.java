@@ -11,7 +11,7 @@ import fr.labri.shelly.ConverterFactory;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Option {
 	String name() default NO_NAME;
-
+	String summary() default NO_NAME;
 	Class<? extends ConverterFactory> factory() default fr.labri.shelly.impl.ConverterFactory.class;
 	
 	public static final String NO_NAME = "";

@@ -11,7 +11,8 @@ public interface Context extends ShellyItem {
 	public void visit_commands(Visitor visitor);
 
 	public abstract Iterable<Option> getOptions();
+	public abstract Iterable<ShellyItem> getItems();
 
-	void addCommand(Command cmd);
 	void addOption(Option opt);
+	void addCommand(ShellyItem cmd);
 }

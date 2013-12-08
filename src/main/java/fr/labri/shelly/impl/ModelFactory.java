@@ -5,8 +5,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import fr.labri.shelly.ConverterFactory;
+import fr.labri.shelly.Context;
+import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.ShellyItem;
+import static fr.labri.shelly.annotations.AnnotationUtils.*;
 import fr.labri.shelly.impl.Visitor.TraversalVisitor;
 
 public class ModelFactory {
@@ -33,8 +36,13 @@ public class ModelFactory {
 		return new Builder().build(name, clazz);
 	}
 
-	private class Builder extends TraversalVisitor {
+	static public String accessorName(String str) {
+		if(str.startsWith("set"))
+			str = str.substring(3);
+		return str.toLowerCase();
+	}
 
+	private class Builder extends TraversalVisitor {
 		public Builder() {
 		}
 
@@ -45,27 +53,24 @@ public class ModelFactory {
 		}
 
 		@Override
-		public void visit(fr.labri.shelly.Context optionGroup) {
-			populate((Context) optionGroup);
+		public void visit(Context optionGroup) {
+			populate((Context) optionGroup, optionGroup.getAssociatedClass());
 			super.visit(optionGroup);
 		}
 
 		public Context createGroup(Context parent, String name, Class<?> clazz) {
 			if ((parent == null) != (clazz.getEnclosingClass() == null))
 				throw new RuntimeException("Cannot create option group when not starting at top level"); // FIXME
-			Context grp = new Context(parent, name, clazz);
-			return grp;
+			return AbstractContext.getContext(name, parent, clazz, null);
 		}
 
 		public Group createCommandGroup(Context parent, String name, Class<?> clazz) {
 			if ((parent == null) != (clazz.getEnclosingClass() == null))
 				throw new RuntimeException("Cannot create option group when not starting at top level"); // FIXME
-			Group grp = new Group(parent, name, clazz);
-			return grp;
+			return AbstractGroup.getGroup(name, parent, clazz, null);
 		}
 
-		protected void populate(Context grp) {
-			Class<?> clazz = grp.getAssociatedClass();
+		protected void populate(Context grp, Class<?> clazz) {
 
 			for (Field f : clazz.getFields())
 				if (f.isAnnotationPresent(OPT_CLASS))
@@ -83,34 +88,28 @@ public class ModelFactory {
 					grp.addCommand(newItem(c.getAnnotation(OPTGRP_CLASS), c, Modifier.isStatic(c.getModifiers()) ? null : grp));
 		}
 
-		protected Option newItem(fr.labri.shelly.annotations.Option annotation, Method method, fr.labri.shelly.Context parent) {
-			String name = !annotation.name().equals(fr.labri.shelly.annotations.Option.NO_NAME) ? annotation.name() : accessorName(method.getName());
-			return SimpleOption.build(loadFactory(annotation.factory()), parent, name, method);
-		}
-		
-		String accessorName(String str) {
-			if(str.startsWith("set"))
-				str = str.substring(3);
-			return str.toLowerCase();
+		protected Option newItem(fr.labri.shelly.annotations.Option annotation, Field field, fr.labri.shelly.Context parent) {
+			String name = getName(annotation.name(), field.getName().toLowerCase());
+			return OptionFactory.build(loadFactory(annotation.factory()), parent, name, field);
 		}
 
-		protected Option newItem(fr.labri.shelly.annotations.Option annotation, Field field, fr.labri.shelly.Context parent) {
-			String name = !annotation.name().equals(fr.labri.shelly.annotations.Option.NO_NAME) ? annotation.name() : field.getName().toLowerCase();
-			return SimpleOption.build(loadFactory(annotation.factory()), parent, name, field);
+		protected Option newItem(fr.labri.shelly.annotations.Option annotation, Method method, fr.labri.shelly.Context parent) {
+			String name = getName(annotation.name(), accessorName(method.getName()));
+			return OptionFactory.build(loadFactory(annotation.factory()), parent, name, method);
 		}
 
 		protected ShellyItem newItem(fr.labri.shelly.annotations.Command annotation, Method method, Context parent) {
-			String name = !annotation.name().equals(fr.labri.shelly.annotations.Option.NO_NAME) ? annotation.name() : method.getName().toLowerCase();
-			return new SimpleCommand(loadFactory(annotation.factory()), parent, name, method);
+			String name = getName(annotation.name(), method.getName().toLowerCase());
+			return CommandFactory.build(loadFactory(annotation.factory()), parent, name, method);
 		}
 
 		protected ShellyItem newItem(fr.labri.shelly.annotations.Group annotation, Class<?> clazz, Context parent) {
-			String name = !annotation.name().equals(fr.labri.shelly.annotations.Option.NO_NAME) ? annotation.name() : clazz.getSimpleName().toLowerCase();
+			String name = getName(annotation.name(), clazz.getSimpleName().toLowerCase());
 			return createCommandGroup(parent, name, clazz);
 		}
 
 		protected ShellyItem newItem(fr.labri.shelly.annotations.Context annotation, Class<?> clazz, Context parent) {
-			String name = !annotation.name().equals(fr.labri.shelly.annotations.Option.NO_NAME) ? annotation.name() : clazz.getSimpleName().toLowerCase();
+			String name = getName(annotation.name(), clazz.getSimpleName().toLowerCase());
 			return createGroup(parent, name, clazz);
 		}
 	}

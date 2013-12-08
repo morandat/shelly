@@ -8,7 +8,7 @@ import fr.labri.shelly.Shell;
 public class BasicTests {
 		@Test
 		public void testCreate() {
-			Shell.printHelp(SimpleProject.class);
+			Shell.createShell(SimpleProject.class).printHelp(System.out);;
 		}
 		
 		@Test

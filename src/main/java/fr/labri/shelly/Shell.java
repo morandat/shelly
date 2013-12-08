@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -31,18 +32,28 @@ public class Shell {
 		return createShell(ModelFactory.DEFAULT, clazz);
 	}
 
-	public Group getGroup() {
+	public Group getRoot() {
 		return grp;
 	}
-	public void printHelp() {
-		HelpFactory.printHelp(this);
-	}
-	public static void printHelp(Class<?> clazz) {
-		printHelp(ModelFactory.DEFAULT, clazz);
+
+	void addCommand(Command cmd) {
+		addCommand(getRoot(), cmd);
 	}
 
-	public static void printHelp(ModelFactory factory, Class<?> clazz) {
-		createShell(factory, clazz).printHelp();
+	static void addCommand(Context group, Command cmd) {
+		group.addCommand(cmd);
+	}
+
+	void addOption(Option opt) {
+		addOption(getRoot(), opt);
+	}
+
+	static void addOption(Context group, Option opt) {
+		group.addOption(opt);
+	}
+
+	public void printHelp(PrintStream out) {
+		HelpFactory.printHelp(getRoot(), out);
 	}
 
 	final public void parseCommandLine(String[] cmds) {
@@ -75,34 +86,38 @@ public class Shell {
 			System.out.flush();
 		}
 	}
-	
+
 	public Command find_command(final String cmd) {
 		return find_command(grp, cmd);
 	}
-	
+
 	public Option find_option(final String cmd) {
 		return find_option(grp, cmd);
 	}
-	
+
 	public static Command find_command(Command start, final String cmd) {
+		if (start instanceof Group) {
+			return find_command((Group) start, cmd);
+		}
+		return null;
+	}
+	public static Command find_command(Group start, final String cmd) {
 		try {
-			if (start instanceof Group) {
-				Visitor v = new Visitor.CommandVisitor() {
-					@Override
-					public void visit(Command grp) {
-						if (grp.isValid(cmd)) {
-							throw new Visitor.FoundCommand(grp);
-						}
+			Visitor v = new Visitor.CommandVisitor() {
+				@Override
+				public void visit(Command grp) {
+					if (grp.isValid(cmd)) {
+						throw new Visitor.FoundCommand(grp);
 					}
-				};
-				((Group) start).visit_commands(v);
-			}
+				}
+			};
+			((Group) start).visit_commands(v);
 		} catch (Visitor.FoundCommand e) {
 			return e.cmd;
 		}
 		return null;
 	}
-	
+
 	static public Option find_option(Command start, final String cmd) {
 		try {
 			if (start instanceof Group) {

@@ -7,8 +7,11 @@ import fr.labri.shelly.Shell;
 
 public class Test {
 	public static void main(String[] args) throws IOException {
+		
+		if(Test.class.getClassLoader().getResourceAsStream("echo.txt") == null)
+			throw new IOException();
 		Shell shell = Shell.createShell(SimpleProject.class);
-		shell.getGroup().addCommand(HelpFactory.helpCommand(shell.getGroup(), "help", true));
+		shell.getRoot().addCommand(HelpFactory.getHelpCommand(shell.getRoot()));
 		shell.loop(System.in);
 	}
 }

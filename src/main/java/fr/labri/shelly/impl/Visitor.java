@@ -82,7 +82,15 @@ public class Visitor implements fr.labri.shelly.Visitor {
 		public void visit(Context cmd) {
 			cmd.visit_commands(this);
 		}
+		
+		public void visit_commands(Command cmd) {
+			if (cmd instanceof Group) {
+				visit((Context) cmd);
+			} else
+				cmd.accept(this);
+		}
 	}
+	
 	@SuppressWarnings("serial")
 	public static class FoundCommand extends RuntimeException {
 		public Command cmd;
