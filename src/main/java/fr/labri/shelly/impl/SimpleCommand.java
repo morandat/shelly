@@ -8,6 +8,7 @@ import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Context;
 import fr.labri.shelly.Visitor;
+import fr.labri.shelly.annotations.Default;
 import fr.labri.shelly.impl.Visitor.InstVisitor;
 
 class SimpleCommand implements Command {
@@ -64,5 +65,10 @@ class SimpleCommand implements Command {
 	@Override
 	public Object createContext(Object parent) {
 		return new InstVisitor().instantiate(this, parent);
+	}
+
+	@Override
+	public boolean isDefault() {
+		return _method.isAnnotationPresent(Default.class);
 	}
 }

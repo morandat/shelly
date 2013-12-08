@@ -1,6 +1,7 @@
 package demo;
 
 import java.awt.Color;
+import java.util.Arrays;
 
 import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.impl.ConverterFactory;
@@ -18,15 +19,26 @@ public class SimpleProject {
 		System.err.println("42");
 	}
 
-	@Command(name = "help")
+	@Default
+	@Command
 	public void help() {
 		System.out.println("Contexte: " + verbose);
 		Shell.printHelp(SimpleProject.class);
 	}
 
+	@Command
+	public void echo(String data[]) {
+		System.out.println(Arrays.toString(data));
+	}
+	
+	@Command
+	public void ints(Integer data[]) {
+		System.out.println(Arrays.toString(data));
+	}
+	
 	@Context
 	public class HelpCmds {
-		@Option(name = "verbose")
+		@Option
 		public String verbose;
 
 		@Option
@@ -38,7 +50,7 @@ public class SimpleProject {
 			@Option
 			public String truc;
 
-			@Command(name = "describe")
+			@Command
 			public void describe(String v1, String v2) {
 				System.out.println("verbose(in): " + verbose);
 				System.out.println("level: " + level);
@@ -56,9 +68,12 @@ public class SimpleProject {
 	public class Branch {
 		@Option
 		public int format;
+		
+		@Default
 		@Command
-		public void list(){};
-
+		public void list() {
+			System.out.println("default !!!!!");
+		}
 		@Context
 		public class PasswordInfo {
 			@Option
@@ -77,7 +92,7 @@ public class SimpleProject {
 		}
 	}
 
-	@Command(name = "color", factory = MyFactory.class)
+	@Command(factory = MyFactory.class)
 	public void color(Color c) {
 		System.out.println(c);
 	}

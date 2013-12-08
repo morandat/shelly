@@ -4,22 +4,35 @@ import fr.labri.shelly.Command;
 import fr.labri.shelly.Context;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
+import fr.labri.shelly.Shell;
 import fr.labri.shelly.ShellyItem;
-import fr.labri.shelly.impl.Visitor.CommandVisitor;
 
 public class Parser {
 	PeekIterator<String> _cmdline;
 
-	public void execute(Group cmd, final PeekIterator<String> cmdline) {
+	public Parser(PeekIterator<String> cmdline) {
 		_cmdline = cmdline;
-		Object ctx = fillOptions(cmd, cmd.newGroup(null));
-		Command subCmd = cmd;
-		while((subCmd = new CommandParserVisitor().find_command(subCmd)) != null)
-			ctx = executeGroup(subCmd, ctx);
 	}
 
-	private Object executeGroup(Command subCmd, Object parent) {
-		String txt = _cmdline.next();
+	public static void execute(Group start, final PeekIterator<String> cmdline) {
+		Parser parser = new Parser(cmdline);
+		Object ctx = parser.fillOptions(start, start.newGroup(null));
+		Command cmd = start;
+		Command last = cmd;
+		
+		while((cmd = Shell.find_command(last = cmd, parser._cmdline.peek())) != null)
+			ctx = parser.executeCommand(parser._cmdline.next(), cmd, ctx);
+		if(last instanceof Group)
+			parser.executeDefault((Group)last, ctx);
+	}
+	
+	private void executeDefault(Group subCmd, Object parent) {
+		Command dflt = subCmd.getDefault();
+		if(dflt != null)
+			executeCommand(null, dflt, parent);
+	}
+	
+	private Object executeCommand(String txt, Command subCmd, Object parent) {
 		parent = subCmd.createContext(parent);
 		parent = fillOptions(subCmd, parent);
 		subCmd.apply(parent, txt, _cmdline);
@@ -90,34 +103,4 @@ public class Parser {
 			this.opt = opt;
 		}
 	}
-
-	@SuppressWarnings("serial")
-	static class FoundCommand extends RuntimeException {
-		Command cmd;
-
-		public FoundCommand(Command cmd) {
-			this.cmd = cmd;
-		}
-	}
-
-	class CommandParserVisitor extends CommandVisitor {
-		@Override
-		public void visit(Command cmd) {
-			if (cmd.isValid(_cmdline.peek())) {
-				throw new FoundCommand(cmd);
-			}
-		}
-
-		public Command find_command(Command grp) {
-			try {
-				if(grp instanceof Group)
-					((Group)grp).visit_commands(this);
-			} catch (FoundCommand e) {
-				System.out.println("found cmd: "+e.cmd.getID() + " from " +grp.getID());
-				return e.cmd;
-			}
-			return null;
-		}
-	}
-
 }

@@ -13,12 +13,51 @@
 			<groupId>org.testng</groupId>
 			<artifactId>testng</artifactId>
 			<version>6.8.7</version>
-			
+
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
 	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
+				<configuration>
+					<source>1.7</source>
+					<target>1.7</target>
+<!-- 
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
+				<configuration>
+					<source>1.7</source>
+					<target>1.7</target>
+				</configuration>
+				
+				<annotationProcessors>
+						<annotationProcessor>fr.labri.shelly.impl.Doctor</annotationProcessor>
+				</annotationProcessors>
+					<dependencies>
+					<dependency>
+						<groupId>fr.labri</groupId>
+						<artifactId>shelly</artifactId>
+						<version>0.0.1-SNAPSHOT</version>
+					    <optional>true</optional>
+					    <scope>build</scope> 
+					</dependency>
+				</dependencies>
+			</plugin>
+		</plugins>
+	</build>
+					-->
+				</configuration>
+			</plugin>
+		</plugins>
 	</build>
 
 </project>

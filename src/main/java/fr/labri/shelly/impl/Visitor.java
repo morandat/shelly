@@ -37,7 +37,7 @@ public class Visitor implements fr.labri.shelly.Visitor {
 		visit((ShellyItem)cmdGroup);
 	}
 	
-	static class TraversalVisitor extends Visitor {
+	public static class TraversalVisitor extends Visitor {
 		@Override
 		public void visit(ShellyItem item) {
 			item.visit_all(this);
@@ -65,7 +65,7 @@ public class Visitor implements fr.labri.shelly.Visitor {
 		}
 	}
 	
-	static class CommandVisitor extends Visitor {
+	public static class CommandVisitor extends Visitor {
 		
 		@Override
 		public void visit(Group cmdGrp) {
@@ -77,7 +77,14 @@ public class Visitor implements fr.labri.shelly.Visitor {
 			cmd.visit_commands(this);
 		}
 	}
-	
+	@SuppressWarnings("serial")
+	public static class FoundCommand extends RuntimeException {
+		public Command cmd;
+
+		public FoundCommand(Command cmd) {
+			this.cmd = cmd;
+		}
+	}
 	static class InstVisitor extends Visitor {
 		private Object group;
 		@Override
