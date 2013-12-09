@@ -12,7 +12,7 @@ import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.ShellyDescriptable;
-import fr.labri.shelly.impl.AbstractCommand.CommandAdapter;
+import fr.labri.shelly.impl.CommandFactory.CommandAdapter;
 
 public class HelpFactory {
 	public interface HelpNavigator {
@@ -47,13 +47,14 @@ public class HelpFactory {
 
 	static public Command getHelpCommand(Context parent, final String name, final boolean defaultcmd, ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
-		return AbstractCommand.getCommand(name, parent, fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class), new CommandAdapter() {
+		return CommandFactory.getCommand(name, parent, fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class), new CommandAdapter() {
 			@Override
-			public void apply(AbstractCommand cmd, Object receive, String next, PeekIterator<String> cmdline) {
+			public Object apply(AbstractCommand cmd, Object receive, String next, PeekIterator<String> cmdline) {
 				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(cmd._converters, next, cmdline)[0]; // FIXME
 																																	// not
 				ShellyDescriptable item = navigator.printHelp(cmd.getParent(), args);
 				printHelp(item, System.err, formater, renderer);
+				return null;
 			}
 
 			@Override

@@ -6,7 +6,7 @@ import demo.SimpleProject;
 import fr.labri.shelly.Shell;
 
 public class Test {
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws Exception {
 		
 		if(Test.class.getClassLoader().getResourceAsStream("echo.txt") == null)
 			throw new IOException();

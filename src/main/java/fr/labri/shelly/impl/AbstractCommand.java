@@ -3,7 +3,6 @@ package fr.labri.shelly.impl;
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Context;
 import fr.labri.shelly.Converter;
-import fr.labri.shelly.Description;
 import fr.labri.shelly.Visitor;
 import fr.labri.shelly.impl.Visitor.InstVisitor;
 
@@ -52,31 +51,5 @@ public abstract class AbstractCommand implements Command {
 	@Override
 	public Object createContext(Object parent) {
 		return new InstVisitor().instantiate(this, parent);
-	}
-	
-	
-	static AbstractCommand getCommand(String name, Context parent, Converter<?>[] converters, final CommandAdapter adapter) {
-		return new AbstractCommand(name, parent, converters) {
-			@Override
-			public void apply(Object receive, String next, PeekIterator<String> cmdline) {
-				adapter.apply(this, receive, next, cmdline);
-			}
-			
-			@Override
-			public boolean isDefault() {
-				return adapter.isDefault();
-			}
-
-			@Override
-			public Description getDescription() {
-				return adapter.getDescription();
-			}
-		};
-	}
-
-	public interface CommandAdapter {
-		public void apply(AbstractCommand cmd, Object receive, String next, PeekIterator<String> cmdline);
-		public Description getDescription();
-		public boolean isDefault();
 	}
 }

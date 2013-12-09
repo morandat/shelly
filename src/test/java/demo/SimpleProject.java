@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.util.Arrays;
 
 import fr.labri.shelly.annotations.*;
+import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.impl.ConverterFactory;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.Converter;
@@ -17,14 +18,14 @@ public class SimpleProject {
 
 	int level = 0;
 
-	@Option(summary="an accessor exemple")
+	@Option(summary = "an accessor exemple")
 	public void setVirt(int val) {
 		level = val;
 		System.err.println(val);
 	}
 
 	@Command
-	@Description(summary="a another short ex.")
+	@Description(summary = "a another short ex.")
 	public void oldhelp(String[] cmds) {
 		Shell shell = Shell.createShell(SimpleProject.class);
 		if (cmds.length == 0) {
@@ -43,13 +44,13 @@ public class SimpleProject {
 			HelpFactory.printHelp(parent, System.out);
 		}
 	}
-	
-	@Command(summary="short way to go")
+
+	@Command(summary = "short way to go")
 	@Description("A more long way to go !")
 	public void newoldhelp(String[] cmds) {
 		HelpFactory.NAVIGATOR.printHelp(Shell.createShell(SimpleProject.class).getRoot(), cmds);
 	}
-	
+
 	@Command(summary = "Some short text")
 	@Description(url = "!echo.txt")
 	public void echo(String data[]) {
@@ -76,7 +77,7 @@ public class SimpleProject {
 			public String truc;
 
 			@Command
-			public void describe(String v1, String v2) {
+			public void describe(@Param(value="v1", factory = MyFactory.class) String v1, @Param("v2") String v2) {
 				System.out.println("verbose(in): " + verbose);
 				System.out.println("level: " + level);
 				System.out.println("verbose(out):" + SimpleProject.this.verbose);
@@ -134,5 +135,12 @@ public class SimpleProject {
 				};
 			return super.getObjectConverter(type);
 		}
+	}
+
+	@Error
+	void errorHandler(Exception e, String[] cmds) {
+		System.err.println("erreur " + e);
+		for (String c : cmds)
+			System.err.println(c);
 	}
 }

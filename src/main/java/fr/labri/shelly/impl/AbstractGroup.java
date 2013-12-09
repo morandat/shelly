@@ -52,8 +52,8 @@ public abstract class AbstractGroup extends AbstractContext implements Group, Sh
 	static Group getGroup(String name, Context parent, Class<?> clazz, final GroupAdapter adapter) {
 		return new AbstractGroup(parent, name, clazz) {
 			@Override
-			public void apply(Object receive, String next, PeekIterator<String> cmdline) {
-				adapter.apply(this, receive, next, cmdline);
+			public Object apply(Object receive, String next, PeekIterator<String> cmdline) {
+				return adapter.apply(this, receive, next, cmdline);
 			}
 
 			@Override
@@ -64,7 +64,7 @@ public abstract class AbstractGroup extends AbstractContext implements Group, Sh
 	}
 
 	public interface GroupAdapter {
-		void apply(AbstractGroup abstractGroup, Object receive, String next, PeekIterator<String> cmdline);
+		Object apply(AbstractGroup abstractGroup, Object receive, String next, PeekIterator<String> cmdline);
 		boolean isDefault();
 	}
 }

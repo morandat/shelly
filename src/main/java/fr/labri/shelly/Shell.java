@@ -44,6 +44,10 @@ public class Shell {
 		group.addCommand(cmd);
 	}
 
+	static void addCommand(Context group, Context cmd) {
+		group.addCommand(cmd);
+	}
+
 	void addOption(Option opt) {
 		addOption(getRoot(), opt);
 	}
@@ -68,23 +72,50 @@ public class Shell {
 		Parser.execute(grp, new PeekIterator<>(cmdLine));
 	}
 
-	public void loop(InputStream inputStream) throws IOException {
-		BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
-		String line;
-		String prompt = String.format("%s> ", grp.getID());
-		System.out.print(prompt);
-		System.out.flush();
-		while ((line = in.readLine()) != null) {
-			try {
-				parseCommandLine(line.split(" "));
-			} catch (RuntimeException e) {
-				System.err.println(e.getMessage());
-			} catch (Exception e) {
-				System.err.println(e.getMessage());
+	public void loop(InputStream inputStream) throws Exception {
+		final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
+		loop(inputStream, new ShellAdapter() {
+			String prompt = String.format("%s> ", grp.getID());
+
+			@Override
+			public String prompt() {
+				return prompt;
 			}
-			System.out.print(prompt);
+
+			@Override
+			public String readLine() throws IOException {
+				return in.readLine();
+			}
+
+			@Override
+			public void catchBlock(Exception e) throws Exception {
+				System.err.println("Error found " + e.getCause());
+				e.printStackTrace(System.err);
+			}
+
+			@Override
+			public void printResult(Object result) throws IOException {
+			}
+		});
+	}
+
+	public void loop(InputStream in, ShellAdapter adapter) throws Exception {
+		String line;
+		do {
+			System.out.println(adapter.prompt());
 			System.out.flush();
-		}
+			line = adapter.readLine();
+			if (line != null)
+				try {
+					// Object result =
+					parseCommandLine(line.split(" "));
+					// adapter.printResult(result);
+				} catch (RuntimeException e) {
+					adapter.catchBlock(e);
+				} catch (Exception e) {
+					adapter.catchBlock(e);
+				}
+		} while (line != null);
 	}
 
 	public Command find_command(final String cmd) {
@@ -101,6 +132,7 @@ public class Shell {
 		}
 		return null;
 	}
+
 	public static Command find_command(Group start, final String cmd) {
 		try {
 			Visitor v = new Visitor.CommandVisitor() {
@@ -133,5 +165,12 @@ public class Shell {
 			return e.opt;
 		}
 		return null;
+	}
+
+	interface ShellAdapter {
+		String prompt();
+		void catchBlock(Exception e) throws Exception;
+		String readLine() throws IOException;
+		void printResult(Object result) throws IOException;
 	}
 }
