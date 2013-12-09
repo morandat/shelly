@@ -19,15 +19,15 @@ public class ConverterFactory {
 			_parent = parent;
 		}
 		@Override
-		public Converter<?> getConverter(Class<?> type, Object context) {
+		public Converter<?> getConverter(Class<?> type, boolean isOption ,Object context) {
 			for(fr.labri.shelly.ConverterFactory factory : _factories) {
-				Converter<?> converter = factory.getConverter(type, context);
+				Converter<?> converter = factory.getConverter(type, isOption, context);
 				if(converter != null) {
 					return converter;
 				}
 			}
 			if(_parent != null)
-				return _parent.getConverter(type, context);
+				return _parent.getConverter(type, isOption, context);
 			return null;
 		}
 	}
@@ -75,30 +75,30 @@ public class ConverterFactory {
 	
 	public static class BasicConverter implements fr.labri.shelly.ConverterFactory {
 		
-		public Converter<?> getConverter(Class<?> type, Object context) {
+		public Converter<?> getConverter(Class<?> type, boolean isOption, Object context) {
 			Converter<?> converter = null;
 			if (type.isArray())
-				converter = getArrayConverter(type, context);
+				converter = getArrayConverter(type, isOption, context);
 			else if (type.isPrimitive())
-				converter = getPrimitiveConverter(type);
+				converter = getPrimitiveConverter(type, isOption);
 			else
-				converter = getObjectConverter(type);
+				converter = getObjectConverter(type, isOption);
 
 			if (converter == null)
 				throw new RuntimeException(String.format("In %s: No converter for type %s", context, type.toString()));
 			return converter;
 		}
-		public Converter<?> getArrayConverter(Class<?> type, Object context) {
-			return new ArrayConverter(getConverter(type.getComponentType(), context));
+		public Converter<?> getArrayConverter(Class<?> type, boolean isOption, Object context) {
+			return new ArrayConverter(getConverter(type.getComponentType(), isOption, context));
 		}
 		
-		public Converter<?> getPrimitiveConverter(Class<?> type) {
+		public Converter<?> getPrimitiveConverter(Class<?> type, boolean isOption) {
 			for(Converter<?> c: DEFAULTS_PRIM)
 				if(type.isAssignableFrom(c.convertedType()))
 					return c;
 			return null;
 		}
-		public Converter<?> getObjectConverter(Class<?> type) {
+		public Converter<?> getObjectConverter(Class<?> type, boolean isOption) {
 			for(Converter<?> c: DEFAULTS)
 				if(type.isAssignableFrom(c.convertedType()))
 					return c;
@@ -157,7 +157,7 @@ public class ConverterFactory {
 	public static Converter<?>[] getConverters(final fr.labri.shelly.ConverterFactory factory, Class<?> param) {
 		return new Converter[] { new fr.labri.shelly.impl.ConverterFactory() {
 			public Converter<?> getConverter(Class<?> type, Object context) {
-				Converter<?> converter = factory.getConverter(type, context);
+				Converter<?> converter = factory.getConverter(type, false, context);
 				return new ArrayConverter(converter);
 			}
 		}.getConverter(param, param) };
@@ -167,7 +167,7 @@ public class ConverterFactory {
 		int i = 0;
 		Converter<?>[] converters = new Converter<?>[params.length];
 		for (Class<?> a : params)
-			converters[i++] = factory.getConverter(a, params);
+			converters[i++] = factory.getConverter(a, false, params);
 		return converters;
 	}
 

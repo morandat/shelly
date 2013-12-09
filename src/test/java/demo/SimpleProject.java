@@ -126,7 +126,7 @@ public class SimpleProject {
 	}
 	
 	static public class MyFactory implements ConverterFactory {
-		public Converter<?> getConverter(Class<?> type, Object context) {
+		public Converter<?> getConverter(Class<?> type, boolean isOption, Object context) {
 			if (type.isAssignableFrom(Color.class))
 				return new SimpleConverter<Color>() {
 					@Override

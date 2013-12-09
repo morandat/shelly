@@ -2,7 +2,6 @@ package fr.labri.shelly.impl;
 
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Context;
-import fr.labri.shelly.Converter;
 import fr.labri.shelly.Visitor;
 import fr.labri.shelly.impl.Visitor.InstVisitor;
 
