@@ -10,21 +10,18 @@ import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.ShellyItem;
 import static fr.labri.shelly.annotations.AnnotationUtils.*;
+import fr.labri.shelly.impl.ConverterFactory.BasicConverter;
 import fr.labri.shelly.impl.Visitor.TraversalVisitor;
 
 public class ModelFactory {
 	public static final ModelFactory DEFAULT = new ModelFactory();
 
-	public ConverterFactory factory = new fr.labri.shelly.impl.ConverterFactory();
+	ConverterFactory _parentConverter = fr.labri.shelly.impl.ConverterFactory.DEFAULT;
 
-	private ConverterFactory loadFactory(Class<? extends ConverterFactory> newFactory) {
-		if (factory.getClass().equals(newFactory))
-			return factory;
-		try {
-			return newFactory.newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
-			throw new RuntimeException(e);
-		}
+	private ConverterFactory loadConverterFactory(ConverterFactory parent, Class<? extends ConverterFactory> newFactory[]) {
+		if (newFactory.length < 1 || BasicConverter.class.equals(newFactory[0]))
+			return parent;
+		return fr.labri.shelly.impl.ConverterFactory.getComposite(parent, newFactory);
 	}
 
 	public Group createModel(Class<?> clazz) {
@@ -54,8 +51,10 @@ public class ModelFactory {
 
 		@Override
 		public void visit(Context optionGroup) {
+			ConverterFactory p = _parentConverter;
 			populate((Context) optionGroup, optionGroup.getAssociatedClass());
 			super.visit(optionGroup);
+			_parentConverter = p;
 		}
 
 		public Context createGroup(Context parent, String name, Class<?> clazz) {
@@ -71,7 +70,6 @@ public class ModelFactory {
 		}
 
 		protected void populate(Context grp, Class<?> clazz) {
-
 			for (Field f : clazz.getFields())
 				if (f.isAnnotationPresent(OPT_CLASS))
 					grp.addOption(newItem(f.getAnnotation(OPT_CLASS), f, grp));
@@ -90,17 +88,20 @@ public class ModelFactory {
 
 		protected Option newItem(fr.labri.shelly.annotations.Option annotation, Field field, fr.labri.shelly.Context parent) {
 			String name = getName(annotation.name(), field.getName().toLowerCase());
-			return OptionFactory.build(loadFactory(annotation.factory()), parent, name, field);
+			ConverterFactory converter = loadConverterFactory(_parentConverter, annotation.converter());
+			return OptionFactory.build(converter, parent, name, field);
 		}
 
 		protected Option newItem(fr.labri.shelly.annotations.Option annotation, Method method, fr.labri.shelly.Context parent) {
 			String name = getName(annotation.name(), accessorName(method.getName()));
-			return OptionFactory.build(loadFactory(annotation.factory()), parent, name, method);
+			ConverterFactory converter = loadConverterFactory(_parentConverter, annotation.converter());
+			return OptionFactory.build(converter, parent, name, method);
 		}
 
 		protected ShellyItem newItem(fr.labri.shelly.annotations.Command annotation, Method method, Context parent) {
 			String name = getName(annotation.name(), method.getName().toLowerCase());
-			return CommandFactory.build(loadFactory(annotation.factory()), parent, name, method);
+			ConverterFactory converter = loadConverterFactory(_parentConverter, annotation.converter());
+			return CommandFactory.build(converter, parent, name, method);
 		}
 
 		protected ShellyItem newItem(fr.labri.shelly.annotations.Group annotation, Class<?> clazz, Context parent) {

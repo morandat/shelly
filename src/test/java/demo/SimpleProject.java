@@ -5,7 +5,8 @@ import java.util.Arrays;
 
 import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.annotations.Error;
-import fr.labri.shelly.impl.ConverterFactory;
+import fr.labri.shelly.ConverterFactory;
+import fr.labri.shelly.impl.ConverterFactory.SimpleConverter;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Shell;
@@ -77,7 +78,7 @@ public class SimpleProject {
 			public String truc;
 
 			@Command
-			public void describe(@Param(value="v1", factory = MyFactory.class) String v1, @Param("v2") String v2) {
+			public void describe(@Param(value="a_value", converter = {MyFactory.class}) String v1, @Param( "v2") String v2) {
 				System.out.println("verbose(in): " + verbose);
 				System.out.println("level: " + level);
 				System.out.println("verbose(out):" + SimpleProject.this.verbose);
@@ -119,13 +120,13 @@ public class SimpleProject {
 		}
 	}
 
-	@Command(factory = MyFactory.class)
+	@Command(converter = MyFactory.class)
 	public void color(Color c) {
 		System.out.println(c);
 	}
-
-	static public class MyFactory extends ConverterFactory {
-		public Converter<?> getObjectConverter(Class<?> type) {
+	
+	static public class MyFactory implements ConverterFactory {
+		public Converter<?> getConverter(Class<?> type, Object context) {
 			if (type.isAssignableFrom(Color.class))
 				return new SimpleConverter<Color>() {
 					@Override
@@ -133,7 +134,7 @@ public class SimpleProject {
 						return new Color(253); //
 					}
 				};
-			return super.getObjectConverter(type);
+			return null;
 		}
 	}
 

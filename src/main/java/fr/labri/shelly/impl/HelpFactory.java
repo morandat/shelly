@@ -6,6 +6,7 @@ import java.util.Iterator;
 
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Context;
+import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Option;
@@ -38,7 +39,7 @@ public class HelpFactory {
 	}
 
 	static public Command getHelpCommand(Context parent) {
-		return getHelpCommand(parent, "help", true, ConverterFactory.DEFAULT);
+		return getHelpCommand(parent, "help", true, fr.labri.shelly.impl.ConverterFactory.DEFAULT);
 	}
 
 	static public Command getHelpCommand(Context parent, final String name, final boolean defaultcmd, ConverterFactory factory) {
@@ -47,10 +48,11 @@ public class HelpFactory {
 
 	static public Command getHelpCommand(Context parent, final String name, final boolean defaultcmd, ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
-		return CommandFactory.getCommand(name, parent, fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class), new CommandAdapter() {
+		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class);
+		return CommandFactory.getCommand(name, parent, converters, new CommandAdapter() {
 			@Override
 			public Object apply(AbstractCommand cmd, Object receive, String next, PeekIterator<String> cmdline) {
-				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(cmd._converters, next, cmdline)[0]; // FIXME
+				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(converters, next, cmdline)[0]; // FIXME
 																																	// not
 				ShellyDescriptable item = navigator.printHelp(cmd.getParent(), args);
 				printHelp(item, System.err, formater, renderer);

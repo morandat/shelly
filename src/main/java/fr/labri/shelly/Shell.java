@@ -11,7 +11,7 @@ import java.util.Iterator;
 
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelFactory;
-import fr.labri.shelly.impl.Parser;
+import fr.labri.shelly.impl.Executor;
 import fr.labri.shelly.impl.Visitor;
 import fr.labri.shelly.impl.PeekIterator;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
@@ -69,7 +69,7 @@ public class Shell {
 	}
 
 	final public void parse(Iterator<String> cmdLine) {
-		Parser.execute(grp, new PeekIterator<>(cmdLine));
+		Executor.execute(grp, new PeekIterator<>(cmdLine));
 	}
 
 	public void loop(InputStream inputStream) throws Exception {

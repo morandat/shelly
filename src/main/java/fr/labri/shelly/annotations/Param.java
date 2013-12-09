@@ -4,5 +4,5 @@ import fr.labri.shelly.ConverterFactory;
 
 public @interface Param {
 	String value();
-	Class<? extends ConverterFactory> factory() default ConverterFactory.class;
+	Class<? extends ConverterFactory>[] converter() default ConverterFactory.class;
 }

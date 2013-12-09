@@ -19,7 +19,7 @@ class CommandFactory {
 	}
 
 	static AbstractCommand getCommand(String name, Context parent, Converter<?>[] converters, final CommandAdapter adapter) {
-		return new AbstractCommand(name, parent, converters) {
+		return new AbstractCommand(name, parent) {
 			@Override
 			public Object apply(Object receive, String next, PeekIterator<String> cmdline) {
 				return adapter.apply(this, receive, next, cmdline);
@@ -38,7 +38,8 @@ class CommandFactory {
 	}
 
 	public static ShellyItem build(ConverterFactory loadFactory, Context parent, String name, final Method method) {
-		return getCommand(name, parent, fr.labri.shelly.impl.ConverterFactory.getConverters(loadFactory, method.getParameterTypes()), new CommandAdapter() {
+		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(loadFactory, method.getParameterTypes());
+		return getCommand(name, parent, converters, new CommandAdapter() {
 			
 			@Override
 			public boolean isDefault() {
@@ -48,7 +49,7 @@ class CommandFactory {
 			@Override
 			public Object apply(AbstractCommand cmd, Object grp, String text, PeekIterator<String> cmdLine) {
 				try {
-					return method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(cmd._converters, text, cmdLine));
+					return method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(converters, text, cmdLine));
 				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 					throw new RuntimeException(e);
 				}

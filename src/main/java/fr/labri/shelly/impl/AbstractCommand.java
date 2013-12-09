@@ -11,20 +11,9 @@ public abstract class AbstractCommand implements Command {
 	protected final Context _parent;
 	protected final String _id;
 	
-	protected final Converter<?>[] _converters;
-	
-	public AbstractCommand(String name, Context parent, fr.labri.shelly.ConverterFactory factory, Class<?>[] params) {
-		this(name, parent, ConverterFactory.getConverters(factory, params));
-	}
-	
-	public AbstractCommand(String name, Context parent, fr.labri.shelly.ConverterFactory factory, Class<?> param) {
-		this(name, parent, ConverterFactory.getConverters(factory, param));
-	}
-	
-	public AbstractCommand(String name, Context parent, Converter<?>[] converters) {
+	public AbstractCommand(String name, Context parent) {
 		_id = name;
 		_parent = parent;
-		_converters = converters;
 	}
 
 	public boolean isValid(String str) {

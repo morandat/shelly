@@ -8,23 +8,23 @@ import fr.labri.shelly.Shell;
 import fr.labri.shelly.ShellyItem;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
 
-public class Parser {
+public class Executor {
 	PeekIterator<String> _cmdline;
 
-	public Parser(PeekIterator<String> cmdline) {
+	public Executor(PeekIterator<String> cmdline) {
 		_cmdline = cmdline;
 	}
 
 	public static void execute(Group start, final PeekIterator<String> cmdline) {
-		Parser parser = new Parser(cmdline);
-		Object ctx = parser.fillOptions(start, start.newGroup(null));
+		Executor executor = new Executor(cmdline);
+		Object ctx = executor.fillOptions(start, start.newGroup(null));
 		Command cmd = start;
 		Command last = cmd;
 
-		while ((cmd = Shell.find_command(last = cmd, parser._cmdline.peek())) != null)
-			ctx = parser.executeCommand(parser._cmdline.next(), cmd, ctx);
+		while ((cmd = Shell.find_command(last = cmd, executor._cmdline.peek())) != null)
+			ctx = executor.executeCommand(executor._cmdline.next(), cmd, ctx);
 		if (last instanceof Group)
-			parser.executeDefault((Group) last, ctx);
+			executor.executeDefault((Group) last, ctx);
 	}
 
 	private void executeDefault(Group subCmd, Object parent) {
@@ -41,7 +41,8 @@ public class Parser {
 	}
 
 	private Object fillOptions(Command subCmd, Object parent) {
-		while (new OptionParserVisitor().find_option(subCmd, parent))
+		OptionParserVisitor visitor = new OptionParserVisitor();
+		while (visitor.find_option(subCmd, parent))
 			;
 		return parent;
 	}

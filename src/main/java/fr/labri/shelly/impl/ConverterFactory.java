@@ -2,42 +2,36 @@ package fr.labri.shelly.impl;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import fr.labri.shelly.Converter;
 
-public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
-	public Converter<?> getConverter(Class<?> type, Object context) {
-		Converter<?> converter = null;
-		if (type.isArray())
-			converter = getArrayConverter(type, context);
-		else if (type.isPrimitive())
-			converter = getPrimitiveConverter(type);
-		else
-			converter = getObjectConverter(type);
+public class ConverterFactory {
 
-		if (converter == null)
-			throw new RuntimeException(String.format("In %s: No converter for type %s", context, type.toString()));
-		return converter;
+	final static public fr.labri.shelly.ConverterFactory DEFAULT = new fr.labri.shelly.impl.ConverterFactory.BasicConverter();
+	
+	public static class CompositeFactory implements fr.labri.shelly.ConverterFactory {
+		final fr.labri.shelly.ConverterFactory[] _factories;
+		final fr.labri.shelly.ConverterFactory _parent;
+		CompositeFactory(fr.labri.shelly.ConverterFactory[] factories, fr.labri.shelly.ConverterFactory parent) {
+			_factories = factories;
+			_parent = parent;
+		}
+		@Override
+		public Converter<?> getConverter(Class<?> type, Object context) {
+			for(fr.labri.shelly.ConverterFactory factory : _factories) {
+				Converter<?> converter = factory.getConverter(type, context);
+				if(converter != null) {
+					return converter;
+				}
+			}
+			if(_parent != null)
+				return _parent.getConverter(type, context);
+			return null;
+		}
 	}
-
-	public Converter<?> getArrayConverter(Class<?> type, Object context) {
-		return new ArrayConverter(getConverter(type.getComponentType(), context));
-	}
-
-	public Converter<?> getPrimitiveConverter(Class<?> type) {
-		if (type.isAssignableFrom(int.class))
-			return INT_CONVERTER;
-		return null;
-	}
-
-	public Converter<?> getObjectConverter(Class<?> type) {
-		if (type.isAssignableFrom(String.class))
-			return STR_CONVERTER;
-		if (type.isAssignableFrom(Integer.class))
-			return INT_CONVERTER;
-		return null;
-	}
-
+	
 	static Converter<String> STR_CONVERTER = new SimpleConverter<String>() {
 		public String convert(String cmd) {
 			return cmd;
@@ -53,24 +47,77 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 		public Integer convert(String cmd) {
 			return Integer.parseInt(cmd);
 		}
+
 		@Override
 		public Class<Integer> convertedType() {
 			return Integer.class;
 		}
 	};
+	
+	static Converter<Integer> PINT_CONVERTER = new SimpleConverter<Integer>() {
+		public Integer convert(String cmd) {
+			return Integer.parseInt(cmd);
+		}
+
+		@Override
+		public Class<Integer> convertedType() {
+			return int.class;
+		}
+	};
+	
+	public static final Converter<?>[] DEFAULTS = new Converter<?>[] {
+		INT_CONVERTER,
+		STR_CONVERTER
+	};
+	public static final Converter<?>[] DEFAULTS_PRIM = new Converter<?>[] {
+		PINT_CONVERTER,
+	};
+	
+	public static class BasicConverter implements fr.labri.shelly.ConverterFactory {
+		
+		public Converter<?> getConverter(Class<?> type, Object context) {
+			Converter<?> converter = null;
+			if (type.isArray())
+				converter = getArrayConverter(type, context);
+			else if (type.isPrimitive())
+				converter = getPrimitiveConverter(type);
+			else
+				converter = getObjectConverter(type);
+
+			if (converter == null)
+				throw new RuntimeException(String.format("In %s: No converter for type %s", context, type.toString()));
+			return converter;
+		}
+		public Converter<?> getArrayConverter(Class<?> type, Object context) {
+			return new ArrayConverter(getConverter(type.getComponentType(), context));
+		}
+		
+		public Converter<?> getPrimitiveConverter(Class<?> type) {
+			for(Converter<?> c: DEFAULTS_PRIM)
+				if(type.isAssignableFrom(c.convertedType()))
+					return c;
+			return null;
+		}
+		public Converter<?> getObjectConverter(Class<?> type) {
+			for(Converter<?> c: DEFAULTS)
+				if(type.isAssignableFrom(c.convertedType()))
+					return c;
+			return null;
+		}
+	}
 
 	static class ArrayConverter implements Converter<Object> {
 		final Converter<? extends Object> _converter;
-		
+
 		public ArrayConverter(Converter<?> converter) {
 			_converter = converter;
 		}
 
 		final public Object convert(String cmd, PeekIterator<String> cmdLine) {
 			ArrayList<Object> lst = new ArrayList<>();
-			while(cmdLine.hasNext())
+			while (cmdLine.hasNext())
 				lst.add(_converter.convert(cmd, cmdLine));
-			return lst.toArray((Object[])Array.newInstance(_converter.convertedType(), lst.size()));
+			return lst.toArray((Object[]) Array.newInstance(_converter.convertedType(), lst.size()));
 		}
 
 		@Override
@@ -78,7 +125,7 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 			return Array.class;
 		}
 	};
-
+	
 	public static abstract class SimpleConverter<T> implements Converter<T> {
 		final public T convert(String cmd, PeekIterator<String> cmdLine) {
 			return convert(cmdLine.next());
@@ -88,11 +135,25 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 		public Class<?> convertedType() {
 			return Object.class;
 		}
-
 		public abstract T convert(String value);
 	}
-	
 
+	static class Cache {
+		Map<Class<? extends fr.labri.shelly.ConverterFactory>, fr.labri.shelly.ConverterFactory> _objects = new HashMap<Class<? extends fr.labri.shelly.ConverterFactory>, fr.labri.shelly.ConverterFactory>();
+
+		public fr.labri.shelly.ConverterFactory newFactory(Class<? extends fr.labri.shelly.ConverterFactory> clazz) {
+			if(_objects.containsKey(clazz))
+				return _objects.get(clazz);
+			try {
+				fr.labri.shelly.ConverterFactory o = clazz.newInstance();
+				_objects.put(clazz, o);
+				return o; 
+			} catch (InstantiationException | IllegalAccessException e) {
+				throw new RuntimeException(String.format("Cannot instantiate factory: %s", clazz));
+			}
+		}
+	}
+	
 	public static Converter<?>[] getConverters(final fr.labri.shelly.ConverterFactory factory, Class<?> param) {
 		return new Converter[] { new fr.labri.shelly.impl.ConverterFactory() {
 			public Converter<?> getConverter(Class<?> type, Object context) {
@@ -101,7 +162,7 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 			}
 		}.getConverter(param, param) };
 	}
-	
+
 	static Converter<?>[] getConverters(fr.labri.shelly.ConverterFactory factory, Class<?>[] params) {
 		int i = 0;
 		Converter<?>[] converters = new Converter<?>[params.length];
@@ -109,11 +170,19 @@ public class ConverterFactory implements fr.labri.shelly.ConverterFactory {
 			converters[i++] = factory.getConverter(a, params);
 		return converters;
 	}
-	
+
 	public static Object[] convertArray(Converter<?>[] converters, String cmd, PeekIterator<String> cmdLine) {
 		Object[] args = new Object[converters.length];
 		for (int i = 0; i < converters.length; i++)
 			args[i] = converters[i].convert(cmd, cmdLine);
 		return args;
+	}
+
+	static private Cache cache = new Cache();
+	public static fr.labri.shelly.ConverterFactory getComposite(fr.labri.shelly.ConverterFactory parent, Class<? extends fr.labri.shelly.ConverterFactory>[] newFactory) {
+		fr.labri.shelly.ConverterFactory[] factories = new fr.labri.shelly.ConverterFactory[newFactory.length];
+		for(int i = 0; i < newFactory.length; i ++)
+			factories[i] = cache.newFactory(newFactory[i]);
+		return new CompositeFactory(factories, parent);
 	}
 }

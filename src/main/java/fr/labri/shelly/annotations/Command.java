@@ -12,5 +12,5 @@ import fr.labri.shelly.ConverterFactory;
 public @interface Command{
 	String name() default Option.NO_NAME;
 	String summary() default Option.NO_NAME;
-	Class<? extends ConverterFactory> factory() default fr.labri.shelly.impl.ConverterFactory.class;
+	Class<? extends ConverterFactory>[] converter() default fr.labri.shelly.impl.ConverterFactory.BasicConverter.class;
 }

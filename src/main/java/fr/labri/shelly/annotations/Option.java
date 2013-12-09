@@ -12,7 +12,7 @@ import fr.labri.shelly.ConverterFactory;
 public @interface Option {
 	String name() default NO_NAME;
 	String summary() default NO_NAME;
-	Class<? extends ConverterFactory> factory() default fr.labri.shelly.impl.ConverterFactory.class;
+	Class<? extends ConverterFactory>[] converter() default fr.labri.shelly.impl.ConverterFactory.BasicConverter.class;
 	
 	public static final String NO_NAME = "";
 }
