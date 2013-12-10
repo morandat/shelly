@@ -46,6 +46,6 @@ public abstract class AbstractGroup extends AbstractContext implements Group, Sh
 	
 	@Override
 	public Description getDescription() {
-		return DescriptionFactory.getDescription(_clazz, AnnotationUtils.getGroupSummary(_clazz));
+		return DescriptionFactory.getGroupDescription(this, AnnotationUtils.getGroupSummary(_clazz));
 	}
 }

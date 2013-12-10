@@ -2,12 +2,20 @@ package fr.labri.shelly.impl;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Method;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Scanner;
 
+import fr.labri.shelly.Command;
 import fr.labri.shelly.Description;
+import fr.labri.shelly.Group;
+import fr.labri.shelly.annotations.AnnotationUtils;
 import fr.labri.shelly.annotations.Option;
+import fr.labri.shelly.annotations.Param;
+import fr.labri.shelly.impl.Visitor.CommandVisitor;
 import static fr.labri.shelly.annotations.AnnotationUtils.*;
 
 public class DescriptionFactory {
@@ -50,6 +58,11 @@ public class DescriptionFactory {
 		public String getLongDescription() {
 			return _long;
 		}
+
+		@Override
+		public String[][] getDescription() {
+			return null;
+		}
 	}
 	
 	static class RessourceDescription extends URLDescription {
@@ -74,6 +87,10 @@ public class DescriptionFactory {
 		@Override
 		public String getShortDescription() {
 			return _summary;
+		}
+		@Override
+		public String[][] getDescription() {
+			return null;
 		}
 
 		@Override
@@ -105,5 +122,42 @@ public class DescriptionFactory {
 		InputStream openRessource(String uri) throws IOException {
 			return new URL(uri).openStream();
 		}
+		
+	}
+
+	static String[][] describeParamaters(Method method ) {
+		ArrayList<String[]> list = new ArrayList<String[]>();
+		Annotation[][] pa = method.getParameterAnnotations();
+		Param a;
+		int i = 0;
+		
+		for(Class<?> t: method.getParameterTypes()) {
+			if((a = AnnotationUtils.getAnnotation(pa[i++], Param.class)) != null && !a.value().equals(Option.NO_NAME))
+				list.add(new String[]{t.getSimpleName().toLowerCase() , a.value()});
+			else
+				list.add(new String[]{t.getSimpleName().toLowerCase(), t.getSimpleName()});
+		}
+		
+		final String[][] res = new String[list.size()][]; 
+		return list.toArray(res);
+	}
+	
+	public static Description getCommandDescription(final Method method, String shortDesc) {
+		return Description.ExtraDescription.getExtraDescription(getDescription(method, shortDesc), describeParamaters(method));			
+	}
+	
+	public static Description getGroupDescription(final Group grp, String shortDesc) {
+		return Description.ExtraDescription.getExtraDescription(getDescription(grp.getAssociatedClass(), shortDesc), describeSubCommands(grp));			
+	}
+	
+	static String[][] describeSubCommands(Group grp) {
+		final ArrayList<String[]> list = new ArrayList<String[]>();
+		new CommandVisitor() {
+			public void visit(Command cmd) {
+				list.add(new String[]{cmd.getID(), cmd.getDescription().getShortDescription()});
+			}
+		}.visit_commands(grp);
+		final String[][] res = new String[list.size()][]; 
+		return list.toArray(res);
 	}
 }

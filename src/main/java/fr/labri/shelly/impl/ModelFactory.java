@@ -107,7 +107,7 @@ public abstract class ModelFactory {
 		}
 
 		public Command newCommand(ConverterFactory loadFactory, Context parent, String name, final Method method) {
-			final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(loadFactory, method.getParameterTypes());
+			final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(loadFactory, method.getParameterTypes(), method.getParameterAnnotations());
 			return newCommand(name, parent, converters, new CommandAdapter() {
 
 				@Override
@@ -126,12 +126,12 @@ public abstract class ModelFactory {
 
 				@Override
 				public Description getDescription() {
-					return DescriptionFactory.getDescription(method, AnnotationUtils.getCommandSummary(method));
+					return DescriptionFactory.getCommandDescription(method, AnnotationUtils.getCommandSummary(method));
 				}
 			});
 		}
 	};
-
+	
 	public static Option newOption(String name, Context parent, final Converter<?> converter, final OptionAdapter adapter) {
 		return new AbstractOption(parent, name) {
 			@Override

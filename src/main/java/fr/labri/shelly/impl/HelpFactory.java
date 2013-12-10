@@ -145,8 +145,14 @@ public class HelpFactory {
 			final Help help = new Help();
 			item.accept(new Visitor() {
 				public void visit(Group grp) {
+					Description d =  grp.getDescription();
 					help.addTitle("Description");
-					help.addLongHelp(grp);
+					help.addLongHelp(d);
+					help.skipLine();
+
+					help.addTitle("Commands");
+					help.addHelp(d.getDescription());
+					help.skipLine();
 
 					help.addTitle("Options");
 					new OptionVisitor() {
@@ -154,18 +160,17 @@ public class HelpFactory {
 							help.addShortHelp(option);
 						}
 					}.visit_options(grp);
-
-					help.addTitle("Commands");
-					new CommandVisitor() {
-						public void visit(Command cmd) {
-							help.addShortHelp(cmd);
-						}
-					}.visit_commands(grp);
 				}
 
 				public void visit(Command cmd) {
+					Description d = cmd.getDescription();
 					help.addTitle("Description");
-					help.addLongHelp(cmd);
+					help.addLongHelp(d);
+					help.skipLine();
+					
+					help.addTitle("Parameters");
+					help.addHelp(d.getDescription());
+					help.skipLine();
 
 					help.addTitle("Option");
 					new OptionVisitor() {
@@ -236,14 +241,31 @@ public class HelpFactory {
 		public String getLongDescription() {
 			return getShortDescription();
 		}
+
+		@Override
+		public String[][] getDescription() {
+			return null;
+		}
 	};
 	static class Help implements Iterable<String[]> {
+		static final String BLANK_LINE = "";
+		
 		ArrayList<String[]> help = new ArrayList<>();
 
 		void addHelp(String line) {
 			addHelp(new String[] { line });
 		}
-
+		public void skipLine() {
+			addHelp(BLANK_LINE);
+		}
+		public void addLongHelp(Description d) {
+			addHelp(d.getLongDescription());
+			
+		}
+		void addHelp(String[][] strings) {
+			for(String[] s: strings)
+				addHelp(s);
+		}
 		void addHelp(String name, String desc) {
 			addHelp(new String[] { name, desc });
 		}
@@ -255,7 +277,7 @@ public class HelpFactory {
 		}
 
 		void addLongHelp(ShellyDescriptable item) {
-			addHelp(item.getDescription().getLongDescription());
+			addLongHelp(item.getDescription());
 		}
 
 		void addShortHelp(ShellyDescriptable item) {

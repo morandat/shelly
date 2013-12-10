@@ -7,10 +7,7 @@ import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.impl.ConverterFactory.SimpleConverter;
-import fr.labri.shelly.impl.HelpFactory.HelpFormater;
-import fr.labri.shelly.impl.HelpFactory.HelpNavigator;
 import fr.labri.shelly.impl.HelpFactory;
-import fr.labri.shelly.impl.HelpFactory.HelpRenderer;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Shell;
 
@@ -19,9 +16,11 @@ public class SimpleProject {
 
 	@Option(name = "verbose")
 	public String verbose;
+	
+	@Option
+	public boolean debug = true;
 
 	int level = 0;
-
 	@Option(summary = "an accessor exemple")
 	public void setVirt(int val) {
 		level = val;
@@ -66,6 +65,7 @@ public class SimpleProject {
 	@Command(summary = "Some short text")
 	@Description(url = "!echo.txt")
 	public void echo(String data[]) {
+		System.out.println("options: "+debug);
 		System.out.println(Arrays.toString(data));
 	}
 
@@ -89,7 +89,7 @@ public class SimpleProject {
 			public String truc;
 
 			@Command
-			public void describe(@Param(value="a_value", converter = {MyFactory.class}) String v1, @Param( "v2") String v2) {
+			public void describe(@Param(value="a_value", converter = MyFactory.class) String v1, @Param( "v2") String v2) {
 				System.out.println("verbose(in): " + verbose);
 				System.out.println("level: " + level);
 				System.out.println("verbose(out):" + SimpleProject.this.verbose);
@@ -136,6 +136,10 @@ public class SimpleProject {
 		System.out.println(c);
 	}
 	
+	@Command
+	public void colorbis(@Param(converter = MyFactory.class) Color c) {
+		System.out.println(c);
+	}	
 	static public class MyFactory implements ConverterFactory {
 		public Converter<?> getConverter(Class<?> type, boolean isOption, Object context) {
 			if (type.isAssignableFrom(Color.class))

@@ -1,5 +1,6 @@
 package fr.labri.shelly.annotations;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 
 import fr.labri.shelly.impl.ModelFactory;
@@ -41,6 +42,14 @@ public class AnnotationUtils {
 		if(o == null)
 			return Option.NO_NAME;
 		return o.summary();
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T extends Annotation> T getAnnotation(Annotation[] annotations, Class<T> _dummy) {
+		for(Annotation a: annotations)
+			if(a.annotationType().equals(_dummy))
+				return (T)a;
+		return null;
 	}
 	
 	static public String getName(String name, String dflt) {

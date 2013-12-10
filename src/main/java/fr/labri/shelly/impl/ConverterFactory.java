@@ -1,11 +1,14 @@
 package fr.labri.shelly.impl;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 import fr.labri.shelly.Converter;
+import fr.labri.shelly.annotations.AnnotationUtils;
+import fr.labri.shelly.annotations.Param;
 
 public class ConverterFactory {
 
@@ -171,6 +174,21 @@ public class ConverterFactory {
 		return converters;
 	}
 
+	static Converter<?>[] getConverters(fr.labri.shelly.ConverterFactory factory, Class<?>[] params, Annotation[][] annotations) {
+		int i = 0;
+		Converter<?>[] converters = new Converter<?>[params.length];
+		Class<? extends fr.labri.shelly.ConverterFactory> c;
+		for (Class<?> a : params) {
+			fr.labri.shelly.ConverterFactory f = factory;
+			Param pa = AnnotationUtils.getAnnotation(annotations[i], Param.class);
+			if(pa != null && !fr.labri.shelly.ConverterFactory.class.equals(c = pa.converter()))
+					f = cache.newFactory(c);
+			
+			converters[i++] =  ((f == null) ? factory : f).getConverter(a, false, params);
+		}
+		return converters;
+	}
+	
 	public static Object[] convertArray(Converter<?>[] converters, String cmd, PeekIterator<String> cmdLine) {
 		Object[] args = new Object[converters.length];
 		for (int i = 0; i < converters.length; i++)
