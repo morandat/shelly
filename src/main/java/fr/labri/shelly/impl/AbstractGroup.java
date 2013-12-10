@@ -48,23 +48,4 @@ public abstract class AbstractGroup extends AbstractContext implements Group, Sh
 	public Description getDescription() {
 		return DescriptionFactory.getDescription(_clazz, AnnotationUtils.getGroupSummary(_clazz));
 	}
-	
-	static Group getGroup(String name, Context parent, Class<?> clazz, final GroupAdapter adapter) {
-		return new AbstractGroup(parent, name, clazz) {
-			@Override
-			public Object apply(Object receive, String next, PeekIterator<String> cmdline) {
-				return adapter.apply(this, receive, next, cmdline);
-			}
-
-			@Override
-			public boolean isDefault() {
-				return adapter.isDefault();
-			}
-		};
-	}
-
-	public interface GroupAdapter {
-		Object apply(AbstractGroup abstractGroup, Object receive, String next, PeekIterator<String> cmdline);
-		boolean isDefault();
-	}
 }

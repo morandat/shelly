@@ -1,6 +1,7 @@
 package fr.labri.shelly.impl;
 
 import java.io.PrintStream;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -13,9 +14,35 @@ import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.ShellyDescriptable;
-import fr.labri.shelly.impl.CommandFactory.CommandAdapter;
+import fr.labri.shelly.annotations.Default;
+import fr.labri.shelly.impl.ModelFactory.AbstractModelFactory;
+import fr.labri.shelly.impl.ModelFactory.CommandAdapter;
 
 public class HelpFactory {
+	static public class CommandFactory extends AbstractModelFactory {
+		public CommandFactory(ModelFactory parent) {
+			super(parent);
+		}
+
+		@Override
+		public Command newCommand(ConverterFactory converterFactory, Context parent, String name, final Method method) {
+			final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(converterFactory, String.class);
+			HelpNavigator navigator = NAVIGATOR;
+			HelpFormater formater = FORMATER;
+			HelpRenderer renderer = RENDERER;
+			for(Class<?> t: method.getParameterTypes()) {
+				try {
+					navigator = t.isAssignableFrom(HelpNavigator.class) ? (HelpNavigator) t.newInstance() : navigator;
+					formater = t.isAssignableFrom(HelpFormater.class) ? (HelpFormater) t.newInstance() : formater;
+					renderer = t.isAssignableFrom(HelpRenderer.class) ? (HelpRenderer) t.newInstance() : renderer;
+				} catch (InstantiationException | IllegalAccessException e) {
+				}
+			}
+			return newCommand(name, parent, converters, getHelpCommandAdapter(converters, method.isAnnotationPresent(Default.class), NAVIGATOR, FORMATER, RENDERER) );
+		}
+		
+	}
+
 	public interface HelpNavigator {
 		public abstract ShellyDescriptable printHelp(Context context, String[] cmds);
 	}
@@ -49,7 +76,11 @@ public class HelpFactory {
 	static public Command getHelpCommand(Context parent, final String name, final boolean defaultcmd, ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
 		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class);
-		return CommandFactory.getCommand(name, parent, converters, new CommandAdapter() {
+		return ModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, converters, getHelpCommandAdapter(converters, defaultcmd, navigator, formater, renderer));
+	}
+
+	private static CommandAdapter getHelpCommandAdapter(final Converter<?>[] converters, final boolean isDefault, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
+		return new CommandAdapter() {
 			@Override
 			public Object apply(AbstractCommand cmd, Object receive, String next, PeekIterator<String> cmdline) {
 				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(converters, next, cmdline)[0]; // FIXME
@@ -61,14 +92,14 @@ public class HelpFactory {
 
 			@Override
 			public boolean isDefault() {
-				return defaultcmd;
+				return isDefault;
 			}
 
 			@Override
 			public Description getDescription() {
 				return HELP_DESCRIPTION;
 			}
-		});
+		};
 	}
 
 	static final HelpFormater FORMATER = new SimpleFormater<Integer>() {

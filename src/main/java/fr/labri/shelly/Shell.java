@@ -10,7 +10,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import fr.labri.shelly.impl.HelpFactory;
-import fr.labri.shelly.impl.ModelFactory;
+import fr.labri.shelly.impl.ModelBuilder;
 import fr.labri.shelly.impl.Executor;
 import fr.labri.shelly.impl.Visitor;
 import fr.labri.shelly.impl.PeekIterator;
@@ -24,12 +24,12 @@ public class Shell {
 		grp = createGroup;
 	}
 
-	static public Shell createShell(ModelFactory factory, Class<?> clazz) {
+	static public Shell createShell(ModelBuilder factory, Class<?> clazz) {
 		return new Shell(factory.createModel(clazz));
 	}
 
 	static public Shell createShell(Class<?> clazz) {
-		return createShell(ModelFactory.DEFAULT, clazz);
+		return createShell(new ModelBuilder(), clazz);
 	}
 
 	public Group getRoot() {

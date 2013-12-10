@@ -7,7 +7,10 @@ import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.impl.ConverterFactory.SimpleConverter;
+import fr.labri.shelly.impl.HelpFactory.HelpFormater;
+import fr.labri.shelly.impl.HelpFactory.HelpNavigator;
 import fr.labri.shelly.impl.HelpFactory;
+import fr.labri.shelly.impl.HelpFactory.HelpRenderer;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Shell;
 
@@ -50,6 +53,14 @@ public class SimpleProject {
 	@Description("A more long way to go !")
 	public void newoldhelp(String[] cmds) {
 		HelpFactory.NAVIGATOR.printHelp(Shell.createShell(SimpleProject.class).getRoot(), cmds);
+	}
+	
+	@Command(factory=HelpFactory.CommandFactory.class)
+	public void anhelp() {
+		// This method is just a hook for annotation, it won't be called
+		// Parameters type are inspected to determine help components
+		// (HelpNavigator aNavigatorClassName, HelpFormater aFormaterClassName, HelpRenderer aRendererClassName)
+		throw new RuntimeException("CommandFactory has not done its job.");
 	}
 
 	@Command(summary = "Some short text")

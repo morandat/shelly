@@ -134,11 +134,6 @@ public abstract class AbstractContext implements Context {
 		throw new RuntimeException("This class has no enclosing class.\n" + Arrays.toString(fields));
 	}
 	
-	static Context getContext(String name, Context parent, Class<?> clazz, final ContextAdapter adapter) {
-		return new AbstractContext(parent, name, clazz) {
-		};
-	}
-
 	public interface ContextAdapter {
 	}
 }
