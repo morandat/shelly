@@ -6,7 +6,7 @@ import java.util.NoSuchElementException;
 public class PeekIterator<T> implements Iterator<T> {
 	final Iterator<T> _backing;
 	boolean _eof;
-	T _current;
+	T _lookahead;
 
 	public PeekIterator(Iterable<T> backing) {
 		this(backing.iterator());
@@ -20,7 +20,7 @@ public class PeekIterator<T> implements Iterator<T> {
 	}
 
 	public T peek() {
-		return _current;
+		return _lookahead;
 	}
 	
 	public boolean hasNext() {
@@ -30,10 +30,10 @@ public class PeekIterator<T> implements Iterator<T> {
 	public T next() {
 		if(_eof) {
 			_eof = false;
-			return _current;
+			return _lookahead;
 		}
-		T val = _current;
-		_current = _backing.next();
+		T val = _lookahead;
+		_lookahead = _backing.next();
 		if(!_backing.hasNext())
 			_eof = true;
 		return val;

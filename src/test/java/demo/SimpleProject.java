@@ -154,7 +154,8 @@ public class SimpleProject {
 	}
 
 	@Error
-	void errorHandler(Exception e, String[] cmds) {
+	public void errorHandler(Exception e, String[] cmds) {
+		// Error handler are hard coded to take an exception and a string[]
 		System.err.println("erreur " + e);
 		for (String c : cmds)
 			System.err.println(c);
