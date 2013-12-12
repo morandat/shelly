@@ -1,6 +1,7 @@
 package demo;
 
 import java.awt.Color;
+import java.lang.reflect.Member;
 import java.util.Arrays;
 
 import fr.labri.shelly.annotations.*;
@@ -34,9 +35,9 @@ public class SimpleProject {
 		if (cmds.length == 0) {
 			shell.printHelp(System.out);
 		} else {
-			fr.labri.shelly.Command parent = shell.getRoot();
+			fr.labri.shelly.Command<Class<?>, Member> parent = shell.getRoot();
 			for (int i = 0; i < cmds.length; i++) {
-				fr.labri.shelly.Command cmd = Shell.find_command(parent, cmds[i]);
+				fr.labri.shelly.Command<Class<?>, Member> cmd = Shell.find_command(parent, cmds[i]);
 				if (cmd == null) {
 					System.out.println("No topic " + cmds[i]);
 					break;
@@ -89,7 +90,7 @@ public class SimpleProject {
 			public String truc;
 
 			@Command
-			public void describe(@Param(value="a_value", converter = MyFactory.class) String v1, @Param( "v2") String v2) {
+			public void describe(@Param(value="a value which may be a prefix", converter = MyFactory.class) String v1, @Param( "another string, this time it's a suffix") String v2) {
 				System.out.println("verbose(in): " + verbose);
 				System.out.println("level: " + level);
 				System.out.println("verbose(out):" + SimpleProject.this.verbose);

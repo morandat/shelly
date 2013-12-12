@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.lang.reflect.Member;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -18,41 +19,41 @@ import fr.labri.shelly.impl.Visitor.OptionVisitor;
 import fr.labri.shelly.impl.Visitor.FoundOption;
 
 public class Shell {
-	Group grp;
+	Group<Class<?>, Member> grp;
 
-	private Shell(Group createGroup) {
+	private Shell(Group<Class<?>, Member> createGroup) {
 		grp = createGroup;
 	}
 
-	static public Shell createShell(ModelBuilder factory, Class<?> clazz) {
+	static public Shell createShell(ModelBuilder<Class<?>, Member> factory, Class<?> clazz) {
 		return new Shell(factory.createModel(clazz));
 	}
 
 	static public Shell createShell(Class<?> clazz) {
-		return createShell(new ModelBuilder(), clazz);
+		return createShell(new ModelBuilder.Executable(), clazz);
 	}
 
-	public Group getRoot() {
+	public Group<Class<?>, Member> getRoot() {
 		return grp;
 	}
 
-	void addCommand(Command cmd) {
+	void addCommand(Command<Class<?>, Member> cmd) {
 		addCommand(getRoot(), cmd);
 	}
 
-	static void addCommand(Context group, Command cmd) {
+	static void addCommand(Context<Class<?>, Member> group, Command<Class<?>, Member> cmd) {
 		group.addCommand(cmd);
 	}
 
-	static void addCommand(Context group, Context cmd) {
+	static void addCommand(Context<Class<?>, Member> group, Context<Class<?>, Member> cmd) {
 		group.addCommand(cmd);
 	}
 
-	void addOption(Option opt) {
+	void addOption(Option<Class<?>, Member> opt) {
 		addOption(getRoot(), opt);
 	}
 
-	static void addOption(Context group, Option opt) {
+	static void addOption(Context<Class<?>, Member> group, Option<Class<?>, Member> opt) {
 		group.addOption(opt);
 	}
 
@@ -118,48 +119,48 @@ public class Shell {
 		} while (line != null);
 	}
 
-	public Command find_command(final String cmd) {
+	public Command<Class<?>, Member> find_command(final String cmd) {
 		return find_command(grp, cmd);
 	}
 
-	public Option find_option(final String cmd) {
+	public Option<Class<?>, Member> find_option(final String cmd) {
 		return find_option(grp, cmd);
 	}
 
-	public static Command find_command(Command start, final String cmd) {
+	public static Command<Class<?>, Member> find_command(Command<Class<?>, Member> start, final String cmd) {
 		if (start instanceof Group) {
-			return find_command((Group) start, cmd);
+			return find_command((Group<Class<?>, Member>) start, cmd);
 		}
 		return null;
 	}
 
-	public static Command find_command(Group start, final String cmd) {
+	public static Command<Class<?>, Member> find_command(Group<Class<?>, Member> start, final String cmd) {
 		try {
-			Visitor v = new Visitor.CommandVisitor() {
+			Visitor<Class<?>, Member> v = new Visitor.CommandVisitor<Class<?>, Member>() {
 				@Override
-				public void visit(Command grp) {
+				public void visit(Command<Class<?>, Member> grp) {
 					if (grp.isValid(cmd)) {
 						throw new Visitor.FoundCommand(grp);
 					}
 				}
 			};
-			((Group) start).visit_commands(v);
+			((Group<Class<?>, Member>) start).visit_commands(v);
 		} catch (Visitor.FoundCommand e) {
 			return e.cmd;
 		}
 		return null;
 	}
 
-	static public Option find_option(Command start, final String cmd) {
+	static public Option<Class<?>, Member> find_option(Command<Class<?>, Member> start, final String cmd) {
 		try {
 			if (start instanceof Group) {
-				Visitor v = new OptionVisitor() {
-					public void visit(Option option) {
+				Visitor<Class<?>, Member> v = new OptionVisitor<Class<?>, Member>() {
+					public void visit(Option<Class<?>, Member> option) {
 						if (option.getID().equals(cmd))
 							throw new FoundOption(option);
 					};
 				};
-				((Group) start).visit_options(v);
+				((Group<Class<?>, Member>) start).visit_options(v);
 			}
 		} catch (FoundOption e) {
 			return e.opt;

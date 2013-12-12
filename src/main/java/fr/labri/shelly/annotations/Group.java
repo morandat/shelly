@@ -6,7 +6,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import fr.labri.shelly.impl.ModelFactory;
+import fr.labri.shelly.impl.ExecutableModelFactory;
 
 @Target(ElementType.TYPE)
 @Inherited
@@ -14,5 +14,5 @@ import fr.labri.shelly.impl.ModelFactory;
 public @interface Group {
 	String name() default Option.NO_NAME;
 	String summary() default Option.NO_NAME;
-	Class<? extends ModelFactory> factory() default ModelFactory.class;
+	Class<? extends ExecutableModelFactory> factory() default ExecutableModelFactory.class;
 }

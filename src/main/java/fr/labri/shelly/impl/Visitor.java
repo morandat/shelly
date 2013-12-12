@@ -1,91 +1,93 @@
 package fr.labri.shelly.impl;
 
+import java.lang.reflect.Member;
+
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Context;
 import fr.labri.shelly.ShellyItem;
 
-public class Visitor implements fr.labri.shelly.Visitor {
+public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 	@Override
-	public void visit(ShellyItem item) {
+	public void visit(ShellyItem<C, M> item) {
 	}
 	
-	public void visit_parent(ShellyItem item) {
-		ShellyItem p = item.getParent();
+	public void visit_parent(ShellyItem<C, M> item) {
+		ShellyItem<C, M> p = item.getParent();
 		if(p != null)
 			p.accept(this);
 	}
 	
 	@Override
-	public void visit(Option option) {
-		visit((ShellyItem)option);
+	public void visit(Option<C, M> option) {
+		visit((ShellyItem<C, M>)option);
 	}
 	
 	@Override
-	public void visit(Command cmd) {
-		visit((ShellyItem)cmd);
+	public void visit(Command<C, M> cmd) {
+		visit((ShellyItem<C, M>)cmd);
 	}
 
 	@Override
-	public void visit(Context optionGroup) {
-		visit((ShellyItem)optionGroup);
+	public void visit(Context<C, M> optionGroup) {
+		visit((ShellyItem<C, M>)optionGroup);
 	}
 
 	@Override
-	public void visit(Group cmdGroup) {
-		visit((ShellyItem)cmdGroup);
+	public void visit(Group<C, M> cmdGroup) {
+		visit((ShellyItem<C, M>)cmdGroup);
 	}
 	
-	public static class TraversalVisitor extends Visitor {
+	public static class TraversalVisitor<C, M> extends Visitor<C, M> {
 		@Override
-		public void visit(ShellyItem item) {
+		public void visit(ShellyItem<C, M> item) {
 			item.visit_all(this);
 		}
 		@Override
-		public void visit(Group cmdGroup) {
-			visit((Context)cmdGroup);
+		public void visit(Group<C, M> cmdGroup) {
+			visit((Context<C, M>)cmdGroup);
 		}
 	}
 	
-	public static class OptionVisitor extends Visitor {
-		public void visit(Group grp) {
+	public static class OptionVisitor<C, M> extends Visitor<C, M> {
+		public void visit(Group<C, M> grp) {
 		}
 
-		public void visit(Command grp) {
+		public void visit(Command<C, M> grp) {
 			visit_parent(grp);
 		}
 
 		@Override
-		public void visit(Context grp) {
+		public void visit(Context<C, M> grp) {
 			grp.visit_options(this);
 			visit_parent(grp);
 		}
 
-		public void visit_options(Command cmd) {
+		public void visit_options(Command<C, M> cmd) {
 			if (cmd instanceof Group) {
-				visit((Context) cmd);
+				visit((Context<C, M>) (Group<C, M>)cmd);
 			} else
 				cmd.accept(this);
 		}
 	}
 
 	
-	public static class CommandVisitor extends Visitor {
+	public static class CommandVisitor<C, M> extends Visitor<C, M> {
 		
 		@Override
-		public void visit(Group cmdGrp) {
-			visit((Command) cmdGrp);
+		public void visit(Group<C, M> cmdGrp) {
+			visit((Command<C, M>) cmdGrp);
 		}
 		
 		@Override
-		public void visit(Context cmd) {
+		public void visit(Context<C, M> cmd) {
 			cmd.visit_commands(this);
 		}
 		
-		public void visit_commands(Command cmd) {
+		public void visit_commands(Command<C, M> cmd) {
 			if (cmd instanceof Group) {
-				visit((Context) cmd);
+				visit((Context<C, M>) (Group<C, M>)cmd);
 			} else
 				cmd.accept(this);
 		}
@@ -93,43 +95,19 @@ public class Visitor implements fr.labri.shelly.Visitor {
 	
 	@SuppressWarnings("serial")
 	public static class FoundCommand extends RuntimeException {
-		public Command cmd;
+		public Command<Class<?>, Member> cmd;
 
-		public FoundCommand(Command cmd) {
+		public FoundCommand(Command<Class<?>, Member> cmd) {
 			this.cmd = cmd;
 		}
 	}
 	
-
 	@SuppressWarnings("serial")
 	public static class FoundOption extends RuntimeException {
-		public Option opt;
+		public Option<Class<?>, Member> opt;
 
-		public FoundOption(Option opt) {
+		public FoundOption(Option<Class<?>, Member> opt) {
 			this.opt = opt;
-		}
-	}
-	static class InstVisitor extends Visitor {
-		private Object group;
-		@Override
-		public void visit(Group cmdGroup) {
-		}
-		@Override
-		public void visit(Context ctx) {
-			visit_parent(ctx);
-			group = ctx.newGroup(group);
-		}
-		@Override
-		public void visit(Command cmdGroup) {
-			visit_parent(cmdGroup);
-		}
-		public Object instantiate(Command cmd, Object lastValidParent) {
-			group = lastValidParent;
-			if(cmd instanceof Group)
-				visit((Context) cmd);
-			else
-				cmd.accept(this);
-			return group;
 		}
 	}
 }

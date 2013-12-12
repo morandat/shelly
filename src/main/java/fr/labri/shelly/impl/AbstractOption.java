@@ -1,23 +1,30 @@
 package fr.labri.shelly.impl;
 
 import fr.labri.shelly.Context;
+import fr.labri.shelly.Description;
+import fr.labri.shelly.Option;
 import fr.labri.shelly.Visitor;
 
-public abstract class AbstractOption implements fr.labri.shelly.Option {
+public abstract class AbstractOption<C, M> implements Option<C, M> {
 	final String _id;
-	final Context _parent;
+	final Context<C, M> _parent;
 
-	AbstractOption(Context parent, String name) {
+	public interface OptionAdapter<C, M> {
+		abstract Object apply(Option<C, M> opt, Object receive, Object value);
+		abstract Description getDescription();
+	}
+
+	AbstractOption(Context<C, M> parent, String name) {
 		_id = name;
 		_parent = parent;
 	}
 
-	public void accept(Visitor visitor) {
+	public void accept(Visitor<C, M> visitor) {
 		visitor.visit(this);
 	}
 
 	@Override
-	public void visit_all(Visitor visitor) {
+	public void visit_all(Visitor<C, M> visitor) {
 	}
 
 	@Override
@@ -30,7 +37,7 @@ public abstract class AbstractOption implements fr.labri.shelly.Option {
 	}
 
 	@Override
-	public Context getParent() {
+	public Context<C, M> getParent() {
 		return _parent;
 	}
 }

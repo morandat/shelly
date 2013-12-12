@@ -1,11 +1,11 @@
 package fr.labri.shelly;
 
-public interface Visitor {
+public interface Visitor<C, M> {
 
-	void visit(ShellyItem item);
-	void visit(Context optionGroup);
-	void visit(Option option);
-	void visit(Command cmd);
-	void visit(Group cmdGroup);
+	void visit(ShellyItem<C, M> item);
+	void visit(Context<C, M> optionGroup);
+	void visit(Option<C, M> option);
+	void visit(Command<C, M> cmd);
+	void visit(Group<C, M> cmdGroup);
 
 }

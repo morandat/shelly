@@ -1,6 +1,7 @@
 package fr.labri.shelly.impl;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
@@ -20,28 +21,28 @@ public class Executor {
 		_cmdline = cmdline;
 	}
 
-	public static void execute(Group start, final PeekIterator<String> cmdline) {
+	public static void execute(Group<Class<?>, Member> start, final PeekIterator<String> cmdline) {
 		Executor executor = new Executor(cmdline); // TODO a method
 		Object ctx = executor.fillOptions(start, start.newGroup(null));
-		Command cmd = start;
-		Command last = cmd;
+		Command<Class<?>, Member> cmd = start;
+		Command<Class<?>, Member> last = cmd;
 
 		while ((cmd = Shell.find_command(last = cmd, executor._cmdline.peek())) != null)
 			ctx = executor.executeCommand(executor._cmdline.next(), cmd, ctx);
 		if (last instanceof Group)
-			executor.executeDefault((Group) last, ctx);
+			executor.executeDefault((Group<Class<?>, Member>) last, ctx);
 	}
 
-	private void executeDefault(Group subCmd, Object parent) {
-		Command dflt = subCmd.getDefault();
+	private void executeDefault(Group<Class<?>, Member> subCmd, Object parent) {
+		Command<Class<?>, Member> dflt = subCmd.getDefault();
 		if (dflt != null)
 			executeCommand(null, dflt, parent);
 		else
 			error(subCmd, parent);
 	}
 
-	private void error(Context grp, Object parent) {
-		Class<?> c = grp.getAssociatedClass();
+	private void error(Context<Class<?>, Member> grp, Object parent) {
+		Class<?> c = grp.getAssociatedElement();
 		Method found = null;
 		for(Method m: c.getDeclaredMethods())
 			if(m.isAnnotationPresent(Error.class)) {
@@ -56,7 +57,7 @@ public class Executor {
 	}
 	
 
-	private void callError(Context grp, Method found, Object parent) {
+	private void callError(Context<Class<?>, Member> grp, Method found, Object parent) {
 		ArrayList<String> arr = new ArrayList<String>();
 		while(_cmdline.hasNext())
 			arr.add(_cmdline.next());
@@ -66,47 +67,46 @@ public class Executor {
 		}
 	}
 
-	private Object executeCommand(String txt, Command subCmd, Object parent) {
+	private Object executeCommand(String txt, Command<Class<?>, Member> subCmd, Object parent) {
 		parent = subCmd.createContext(parent);
 		parent = fillOptions(subCmd, parent);
 		subCmd.apply(parent, txt, _cmdline);
 		return parent;
 	}
 
-	private Object fillOptions(Command subCmd, Object parent) {
+	private Object fillOptions(Command<Class<?>, Member> subCmd, Object parent) {
 		OptionParserVisitor visitor = new OptionParserVisitor();
 		while (visitor.find_option(subCmd, parent))
 			;
 		return parent;
 	}
 
-
-	class OptionParserVisitor extends OptionVisitor {
+	class OptionParserVisitor extends OptionVisitor<Class<?>, Member> {
 		Object receive;
 
 		@Override
-		public void visit(ShellyItem item) {
+		public void visit(ShellyItem<Class<?>, Member> item) {
 			receive = null;
 		}
 
-		public void visit(Option opt) {
+		public void visit(Option<Class<?>, Member> opt) {
 			if (opt.isValid(_cmdline.peek())) {
 				throw new FoundOption(opt);
 			}
 		}
 
 		@Override
-		public void visit(Context grp) {
+		public void visit(Context<Class<?>, Member> grp) {
 			grp.visit_options(this);
 
-			Context p = grp.getParent();
+			Context<Class<?>, Member> p = grp.getParent();
 			if (p != null) {
 				receive = grp.getEnclosing(receive);
 				p.accept(this);
 			}
 		}
 
-		public boolean find_option(Command cmd, Object group) {
+		public boolean find_option(Command<Class<?>, Member> cmd, Object group) {
 			receive = group;
 			try {
 				visit_options(cmd);

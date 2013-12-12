@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
@@ -146,14 +147,14 @@ public class DescriptionFactory {
 		return Description.ExtraDescription.getExtraDescription(getDescription(method, shortDesc), describeParamaters(method));			
 	}
 	
-	public static Description getGroupDescription(final Group grp, String shortDesc) {
-		return Description.ExtraDescription.getExtraDescription(getDescription(grp.getAssociatedClass(), shortDesc), describeSubCommands(grp));			
+	public static Description getGroupDescription(final Group<Class<?>, Member> grp, String shortDesc) {
+		return Description.ExtraDescription.getExtraDescription(getDescription(grp.getAssociatedElement(), shortDesc), describeSubCommands(grp));			
 	}
 	
-	static String[][] describeSubCommands(Group grp) {
+	static String[][] describeSubCommands(Group<Class<?>, Member> grp) {
 		final ArrayList<String[]> list = new ArrayList<String[]>();
-		new CommandVisitor() {
-			public void visit(Command cmd) {
+		new CommandVisitor<Class<?>, Member>() {
+			public void visit(Command<Class<?>, Member> cmd) {
 				list.add(new String[]{cmd.getID(), cmd.getDescription().getShortDescription()});
 			}
 		}.visit_commands(grp);

@@ -3,6 +3,7 @@ package fr.labri.shelly.annotations;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 
+import fr.labri.shelly.impl.ExecutableModelFactory;
 import fr.labri.shelly.impl.ModelFactory;
 
 public class AnnotationUtils {
@@ -52,28 +53,36 @@ public class AnnotationUtils {
 		return null;
 	}
 	
+	@SuppressWarnings("unchecked")
+	public static <T extends Annotation> T getAnnotation(Iterable<Annotation> annotations, Class<T> _dummy) {
+		for(Annotation a: annotations)
+			if(a.annotationType().equals(_dummy))
+				return (T)a;
+		return null;
+	}
+	
 	static public String getName(String name, String dflt) {
 		return !name.equals(fr.labri.shelly.annotations.Option.NO_NAME) ? name : dflt.toLowerCase();
 	}
 
-	final public static Class<? extends ModelFactory> getFactory(Class<? extends ModelFactory> factory) {
+	final public static Class<? extends ExecutableModelFactory> getFactory(Class<? extends ExecutableModelFactory> factory) {
 		if(!ModelFactory.class.equals(factory))
 			return factory;
 		return null;
 	}
-	public static Class<? extends ModelFactory> getFactory(Command annotation) {
+	public static Class<? extends ExecutableModelFactory> getFactory(Command annotation) {
 		return getFactory(annotation.factory());
 	}
 
-	public static Class<? extends ModelFactory> getFactory(Option annotation) {
+	public static Class<? extends ExecutableModelFactory> getFactory(Option annotation) {
 		return getFactory(annotation.factory());
 	}
 
-	public static Class<? extends ModelFactory> getFactory(Group annotation) {
+	public static Class<? extends ExecutableModelFactory> getFactory(Group annotation) {
 		return getFactory(annotation.factory());
 	}
 	
-	public static Class<? extends ModelFactory> getFactory(Context annotation) {
+	public static Class<? extends ExecutableModelFactory> getFactory(Context annotation) {
 		return getFactory(annotation.factory());
 	}
 }
