@@ -1,8 +1,8 @@
 package fr.labri.shelly;
 
-public interface ShellyItem<C, M> {
+public interface Item<C, M> {
 	public abstract String getID();
-	public abstract Context<C, M> getParent();
+	public abstract Composite<C, M> getParent();
 
 	public abstract boolean isValid(String str);
 

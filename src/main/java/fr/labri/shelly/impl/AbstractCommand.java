@@ -2,15 +2,14 @@ package fr.labri.shelly.impl;
 
 
 import fr.labri.shelly.Command;
-import fr.labri.shelly.Context;
+import fr.labri.shelly.Composite;
 import fr.labri.shelly.Visitor;
 
 public abstract class AbstractCommand<C, M> implements Command<C, M> {
-
-	protected final Context<C, M> _parent;
+	protected final Composite<C, M> _parent;
 	protected final String _id;
 	
-	public AbstractCommand(String name, Context<C, M> parent) {
+	public AbstractCommand(String name, Composite<C, M> parent) {
 		_id = name;
 		_parent = parent;
 	}
@@ -32,7 +31,7 @@ public abstract class AbstractCommand<C, M> implements Command<C, M> {
 	}
 
 	@Override
-	public Context<C, M> getParent() {
+	public Composite<C, M> getParent() {
 		return _parent;
 	}
 }

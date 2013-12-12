@@ -14,8 +14,9 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.ElementKindVisitor7;
 
+import fr.labri.shelly.Action;
 import fr.labri.shelly.Command;
-import fr.labri.shelly.Context;
+import fr.labri.shelly.Composite;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Group;
@@ -50,9 +51,9 @@ public class Doctor extends AbstractProcessor {
 		System.err.println(text);
 	}
 	
-	class StrutureVisitor extends ElementKindVisitor7<Group<TypeElement, Element>, Context<TypeElement, Element>> {
+	class StrutureVisitor extends ElementKindVisitor7<Group<TypeElement, Element>, Composite<TypeElement, Element>> {
 		@Override
-		public Group<TypeElement, Element> visitTypeAsClass(TypeElement e, Context<TypeElement, Element> parent) {
+		public Group<TypeElement, Element> visitTypeAsClass(TypeElement e, Composite<TypeElement, Element> parent) {
 			if(e.getAnnotation(CONTEXT_CLASS) != null)
 				checkContext(e);
 			else if(e.getAnnotation(GROUP_CLASS) != null)
@@ -114,15 +115,15 @@ public class Doctor extends AbstractProcessor {
 	
 
 	ElementModelFactory model_factory = new ElementModelFactory();
-	class ElementModelFactory extends ModelFactory<TypeElement, Element> {
+	class ElementModelFactory implements ModelFactory<TypeElement, Element> {
 
 
-		public Group<TypeElement, Element> newGroup(String name, Context<TypeElement, Element> parent, TypeElement clazz) {
+		public Group<TypeElement, Element> newGroup(String name, Composite<TypeElement, Element> parent, TypeElement clazz) {
 			final boolean isDefault = clazz.getAnnotation(Default.class) != null;
 			return new NavigableGroup(parent, name, null) {
 
 				@Override
-				public Command<TypeElement, Element> getDefault() {
+				public Action<TypeElement, Element> getDefault() {
 					// TODO Auto-generated method stub
 					return null;
 				}
@@ -158,28 +159,28 @@ public class Doctor extends AbstractProcessor {
 				}
 			} ;
 		}
-	
+
 		@Override
-		public Context<TypeElement, Element> newContext(String name, Context<TypeElement, Element> parent, TypeElement clazz) {
+		public Composite<TypeElement, Element> newContext(String name, Composite<TypeElement, Element> parent, TypeElement clazz) {
 			// TODO Auto-generated method stub
 			return null;
 		}
 
 		@Override
-		public Command<TypeElement, Element> newCommand(ConverterFactory loadFactory, Context<TypeElement, Element> parent, String name, Member member) {
+		public Command<TypeElement, Element> newCommand(ConverterFactory loadFactory, Composite<TypeElement, Element> parent, String name, Element member) {
 			// TODO Auto-generated method stub
 			return null;
 		}
 
 		@Override
-		public Option<TypeElement, Element> newOption(ConverterFactory loadFactory, Context<TypeElement, Element> parent, String name, Member member) {
+		public Option<TypeElement, Element> newOption(ConverterFactory loadFactory, Composite<TypeElement, Element> parent, String name, Element member) {
 			// TODO Auto-generated method stub
 			return null;
 		}
 	};
 	
-	static abstract class NavigableGroup extends AbstractContext<TypeElement, Element> implements Group<TypeElement, Element> {
-		public NavigableGroup(Context<TypeElement, Element> parent, String name, TypeElement clazz) {
+	static abstract class NavigableGroup extends AbstractComposite<TypeElement, Element> implements Group<TypeElement, Element> {
+		public NavigableGroup(Composite<TypeElement, Element> parent, String name, TypeElement clazz) {
 			super(parent, name, clazz);
 		}
 

@@ -35,9 +35,9 @@ public class SimpleProject {
 		if (cmds.length == 0) {
 			shell.printHelp(System.out);
 		} else {
-			fr.labri.shelly.Command<Class<?>, Member> parent = shell.getRoot();
+			fr.labri.shelly.Action<Class<?>, Member> parent = shell.getRoot();
 			for (int i = 0; i < cmds.length; i++) {
-				fr.labri.shelly.Command<Class<?>, Member> cmd = Shell.find_command(parent, cmds[i]);
+				fr.labri.shelly.Action<Class<?>, Member> cmd = Shell.findAction(parent, cmds[i]);
 				if (cmd == null) {
 					System.out.println("No topic " + cmds[i]);
 					break;
@@ -56,7 +56,7 @@ public class SimpleProject {
 	}
 	
 	@Command(factory=HelpFactory.CommandFactory.class)
-	public void anhelp() {
+	public void help() {
 		// This method is just a hook for annotation, it won't be called
 		// Parameters type are inspected to determine help components
 		// (HelpNavigator aNavigatorClassName, HelpFormater aFormaterClassName, HelpRenderer aRendererClassName)

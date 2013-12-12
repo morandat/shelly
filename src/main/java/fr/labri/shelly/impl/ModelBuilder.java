@@ -6,10 +6,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import fr.labri.shelly.ConverterFactory;
-import fr.labri.shelly.Context;
+import fr.labri.shelly.Composite;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
-import fr.labri.shelly.ShellyItem;
+import fr.labri.shelly.Item;
 import fr.labri.shelly.annotations.AnnotationUtils;
 import fr.labri.shelly.impl.ConverterFactory.BasicConverter;
 import fr.labri.shelly.impl.Visitor.TraversalVisitor;
@@ -43,14 +43,14 @@ public interface ModelBuilder<C, M> {
 			}
 
 			@Override
-			public void visit(Context<Class<?>, Member> optionGroup) {
+			public void visit(Composite<Class<?>, Member> optionGroup) {
 				ConverterFactory p = _parentConverter;
-				populate((Context<Class<?>, Member>) optionGroup, optionGroup.getAssociatedElement());
+				populate((Composite<Class<?>, Member>) optionGroup, optionGroup.getAssociatedElement());
 				super.visit(optionGroup);
 				_parentConverter = p;
 			}
 
-			protected void populate(Context<Class<?>, Member> grp, Class<?> clazz) {
+			protected void populate(Composite<Class<?>, Member> grp, Class<?> clazz) {
 				for (Field f : clazz.getFields())
 					if (f.isAnnotationPresent(OPT_CLASS))
 						grp.addOption(createItem(f.getAnnotation(OPT_CLASS), f, grp));
@@ -67,17 +67,17 @@ public interface ModelBuilder<C, M> {
 						grp.addCommand(createContext(c.getAnnotation(OPTGRP_CLASS), c, Modifier.isStatic(c.getModifiers()) ? null : grp));
 			}
 
-			public Context<Class<?>, Member> createContext(Context<Class<?>, Member> parent, fr.labri.shelly.annotations.Context annotation, Class<?> clazz) {
+			public Composite<Class<?>, Member> createContext(Composite<Class<?>, Member> parent, fr.labri.shelly.annotations.Context annotation, Class<?> clazz) {
 				if ((parent == null) != (clazz.getEnclosingClass() == null))
 					throw new RuntimeException("Cannot create option group when not starting at top level");
 				String name = getName(annotation.name(), clazz.getSimpleName().toLowerCase());
 				ExecutableModelFactory factory = ExecutableModelFactory.loadModelFactory(_parentFactory, AnnotationUtils.getFactory(annotation));
 
-				Context<Class<?>, Member> item = factory.newContext(name, parent, clazz);
+				Composite<Class<?>, Member> item = factory.newContext(name, parent, clazz);
 				return item;
 			}
 
-			public Group<Class<?>, Member> createGroup(Context<Class<?>, Member> parent, fr.labri.shelly.annotations.Group annotation, Class<?> clazz) {
+			public Group<Class<?>, Member> createGroup(Composite<Class<?>, Member> parent, fr.labri.shelly.annotations.Group annotation, Class<?> clazz) {
 				if ((parent == null) != (clazz.getEnclosingClass() == null))
 					throw new RuntimeException("Cannot create option group when not starting at top level"); // FIXME
 				String name = getName(annotation.name(), clazz.getSimpleName().toLowerCase());
@@ -86,32 +86,32 @@ public interface ModelBuilder<C, M> {
 				return factory.newGroup(name, parent, clazz);
 			}
 			
-			protected Option<Class<?>, Member> createItem(fr.labri.shelly.annotations.Option annotation, Field field, Context<Class<?>, Member> parent) {
+			protected Option<Class<?>, Member> createItem(fr.labri.shelly.annotations.Option annotation, Field field, Composite<Class<?>, Member> parent) {
 				String name = getName(annotation.name(), field.getName().toLowerCase());
 				ConverterFactory converter = loadConverterFactory(annotation.converter());
 				ModelFactory<Class<?>, Member> factory = ExecutableModelFactory.loadModelFactory(_parentFactory, AnnotationUtils.getFactory(annotation)); 
 				return factory.newOption(converter, parent, name, field);
 			}
 
-			protected Option<Class<?>, Member> createItem(fr.labri.shelly.annotations.Option annotation, Method method, Context<Class<?>, Member> parent) {
+			protected Option<Class<?>, Member> createItem(fr.labri.shelly.annotations.Option annotation, Method method, Composite<Class<?>, Member> parent) {
 				String name = getName(annotation.name(), accessorName(method.getName()));
 				ConverterFactory converter = loadConverterFactory(annotation.converter());
 				ModelFactory<Class<?>, Member> factory = ExecutableModelFactory.loadModelFactory(_parentFactory, AnnotationUtils.getFactory(annotation)); 
 				return factory.newOption(converter, parent, name, method);
 			}
 
-			protected ShellyItem<Class<?>, Member> createItem(fr.labri.shelly.annotations.Command annotation, Method method, Context<Class<?>, Member> parent) {
+			protected Item<Class<?>, Member> createItem(fr.labri.shelly.annotations.Command annotation, Method method, Composite<Class<?>, Member> parent) {
 				String name = getName(annotation.name(), method.getName().toLowerCase());
 				ConverterFactory converter = loadConverterFactory(annotation.converter());
 				ModelFactory<Class<?>, Member> factory = ExecutableModelFactory.loadModelFactory(_parentFactory, AnnotationUtils.getFactory(annotation)); 
 				return factory.newCommand(converter, parent, name, method);
 			}
 
-			protected ShellyItem<Class<?>, Member> createGroup(fr.labri.shelly.annotations.Group annotation, Class<?> clazz, Context<Class<?>, Member> parent) {
+			protected Item<Class<?>, Member> createGroup(fr.labri.shelly.annotations.Group annotation, Class<?> clazz, Composite<Class<?>, Member> parent) {
 				return createGroup(parent, annotation, clazz);
 			}
 
-			protected ShellyItem<Class<?>, Member> createContext(fr.labri.shelly.annotations.Context annotation, Class<?> clazz, Context<Class<?>, Member> parent) {
+			protected Item<Class<?>, Member> createContext(fr.labri.shelly.annotations.Context annotation, Class<?> clazz, Composite<Class<?>, Member> parent) {
 				return createContext(parent, annotation, clazz);
 			}
 			

@@ -1,20 +1,14 @@
 package fr.labri.shelly.impl;
 
-import fr.labri.shelly.Context;
-import fr.labri.shelly.Description;
+import fr.labri.shelly.Composite;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Visitor;
 
 public abstract class AbstractOption<C, M> implements Option<C, M> {
 	final String _id;
-	final Context<C, M> _parent;
+	final Composite<C, M> _parent;
 
-	public interface OptionAdapter<C, M> {
-		abstract Object apply(Option<C, M> opt, Object receive, Object value);
-		abstract Description getDescription();
-	}
-
-	AbstractOption(Context<C, M> parent, String name) {
+	AbstractOption(Composite<C, M> parent, String name) {
 		_id = name;
 		_parent = parent;
 	}
@@ -29,7 +23,19 @@ public abstract class AbstractOption<C, M> implements Option<C, M> {
 
 	@Override
 	public boolean isValid(String str) {
-		return ("--" + _id).equals(str);
+		boolean v = endsWith(str, _id, startWith(str, "--"));
+		return v;
+	}
+
+	static public int startWith(String str, String prefix) {
+		return startWith(str, prefix, 0);
+	}
+	
+	static public int startWith(String str, String prefix, int offset) {
+		return str.startsWith(prefix, offset) ? prefix.length() : 0;
+	}
+	static public boolean endsWith(String str, String suffix, int offset) {
+		return (offset + suffix.length() == str.length()) ? str.endsWith(suffix) : false;
 	}
 
 	public String getID() {
@@ -37,7 +43,7 @@ public abstract class AbstractOption<C, M> implements Option<C, M> {
 	}
 
 	@Override
-	public Context<C, M> getParent() {
+	public Composite<C, M> getParent() {
 		return _parent;
 	}
 }

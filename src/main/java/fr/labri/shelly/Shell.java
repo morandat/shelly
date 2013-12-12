@@ -15,6 +15,7 @@ import fr.labri.shelly.impl.ModelBuilder;
 import fr.labri.shelly.impl.Executor;
 import fr.labri.shelly.impl.Visitor;
 import fr.labri.shelly.impl.PeekIterator;
+import fr.labri.shelly.impl.Visitor.FoundCommand;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
 import fr.labri.shelly.impl.Visitor.FoundOption;
 
@@ -41,11 +42,11 @@ public class Shell {
 		addCommand(getRoot(), cmd);
 	}
 
-	static void addCommand(Context<Class<?>, Member> group, Command<Class<?>, Member> cmd) {
+	static void addCommand(Composite<Class<?>, Member> group, Command<Class<?>, Member> cmd) {
 		group.addCommand(cmd);
 	}
 
-	static void addCommand(Context<Class<?>, Member> group, Context<Class<?>, Member> cmd) {
+	static void addCommand(Composite<Class<?>, Member> group, Composite<Class<?>, Member> cmd) {
 		group.addCommand(cmd);
 	}
 
@@ -53,7 +54,7 @@ public class Shell {
 		addOption(getRoot(), opt);
 	}
 
-	static void addOption(Context<Class<?>, Member> group, Option<Class<?>, Member> opt) {
+	static void addOption(Composite<Class<?>, Member> group, Option<Class<?>, Member> opt) {
 		group.addOption(opt);
 	}
 
@@ -119,7 +120,7 @@ public class Shell {
 		} while (line != null);
 	}
 
-	public Command<Class<?>, Member> find_command(final String cmd) {
+	public Action<Class<?>, Member> find_command(final String cmd) {
 		return find_command(grp, cmd);
 	}
 
@@ -127,31 +128,49 @@ public class Shell {
 		return find_option(grp, cmd);
 	}
 
-	public static Command<Class<?>, Member> find_command(Command<Class<?>, Member> start, final String cmd) {
+	public static Action<Class<?>, Member> findAction(Action<Class<?>, Member> start, final String cmd) {
 		if (start instanceof Group) {
 			return find_command((Group<Class<?>, Member>) start, cmd);
 		}
 		return null;
 	}
-
-	public static Command<Class<?>, Member> find_command(Group<Class<?>, Member> start, final String cmd) {
+	
+	public static Action<Class<?>, Member> find_command(Group<Class<?>, Member> start, final String cmd) {
 		try {
 			Visitor<Class<?>, Member> v = new Visitor.CommandVisitor<Class<?>, Member>() {
 				@Override
-				public void visit(Command<Class<?>, Member> grp) {
+				public void visit(Action<Class<?>, Member> grp) {
 					if (grp.isValid(cmd)) {
 						throw new Visitor.FoundCommand(grp);
 					}
 				}
 			};
-			((Group<Class<?>, Member>) start).visit_commands(v);
+			start.visit_commands(v);
 		} catch (Visitor.FoundCommand e) {
 			return e.cmd;
 		}
 		return null;
 	}
-
-	static public Option<Class<?>, Member> find_option(Command<Class<?>, Member> start, final String cmd) {
+	
+	public static Group<Class<?>, Member> find_group(Item<Class<?>, Member> start) {
+		try {
+		start.accept(new Visitor<Class<?>, Member>() {
+			@Override
+			public void visit(Item<Class<?>, Member> i) {
+				visit_parent(i);
+			}
+			@Override
+			public void visit(Group<Class<?>, Member> cmdGroup) {
+				throw new FoundCommand(cmdGroup);
+			}
+		});
+		} catch (FoundCommand e) {
+			return (Group<Class<?>, Member>)e.cmd;
+		}
+		return null; 
+	}
+	
+	static public Option<Class<?>, Member> find_option(Action<Class<?>, Member> start, final String cmd) {
 		try {
 			if (start instanceof Group) {
 				Visitor<Class<?>, Member> v = new OptionVisitor<Class<?>, Member>() {

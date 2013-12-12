@@ -6,15 +6,16 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import fr.labri.shelly.Action;
 import fr.labri.shelly.Command;
-import fr.labri.shelly.Context;
+import fr.labri.shelly.Composite;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Group;
-import fr.labri.shelly.ShellyDescriptable;
+import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.annotations.Default;
 import fr.labri.shelly.impl.ExecutableModelFactory.CommandAdapter;
 
@@ -25,7 +26,7 @@ public class HelpFactory {
 		}
 
 		@Override
-		public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Context<Class<?>, Member> parent, String name, final Method method) {
+		public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
 			final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(converterFactory, String.class);
 			HelpNavigator navigator = NAVIGATOR;
 			HelpFormater formater = FORMATER;
@@ -44,11 +45,11 @@ public class HelpFactory {
 	}
 
 	public interface HelpNavigator {
-		public abstract ShellyDescriptable<Class<?>, Member> printHelp(Context<Class<?>, Member> context, String[] cmds);
+		public abstract Triggerable<Class<?>, Member> printHelp(Composite<Class<?>, Member> context, String[] cmds);
 	}
 
 	public interface HelpRenderer {
-		public abstract Help getHelp(ShellyDescriptable<Class<?>, Member> item);
+		public abstract Help getHelp(Triggerable<Class<?>, Member> item);
 	}
 
 	public interface HelpFormater {
@@ -57,23 +58,23 @@ public class HelpFactory {
 		void renderHelp(PrintStream out, Help helpText);
 	}
 
-	public static void printHelp(ShellyDescriptable<Class<?>, Member> item, PrintStream out) {
+	public static void printHelp(Triggerable<Class<?>, Member> item, PrintStream out) {
 		printHelp(item, out, FORMATER, RENDERER);
 	}
 
-	public static void printHelp(ShellyDescriptable<Class<?>, Member> item, PrintStream out, HelpFormater formater, HelpRenderer renderer) {
+	public static void printHelp(Triggerable<Class<?>, Member> item, PrintStream out, HelpFormater formater, HelpRenderer renderer) {
 		formater.renderHelp(out, renderer.getHelp(item));
 	}
 
-	static public Command<Class<?>, Member> getHelpCommand(Context<Class<?>, Member> parent) {
+	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent) {
 		return getHelpCommand(parent, "help", true, fr.labri.shelly.impl.ConverterFactory.DEFAULT);
 	}
 
-	static public Command<Class<?>, Member> getHelpCommand(Context<Class<?>, Member> parent, final String name, final boolean defaultcmd, ConverterFactory factory) {
+	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, final boolean defaultcmd, ConverterFactory factory) {
 		return getHelpCommand(parent, name, defaultcmd, factory, NAVIGATOR, FORMATER, RENDERER);
 	}
 
-	static public Command<Class<?>, Member> getHelpCommand(Context<Class<?>, Member> parent, final String name, final boolean defaultcmd, ConverterFactory factory, final HelpNavigator navigator,
+	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, final boolean defaultcmd, ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
 		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class);
 		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, converters, getHelpCommandAdapter(converters, defaultcmd, navigator, formater, renderer));
@@ -82,10 +83,10 @@ public class HelpFactory {
 	private static CommandAdapter getHelpCommandAdapter(final Converter<?>[] converters, final boolean isDefault, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
 		return new CommandAdapter() {
 			@Override
-			public Object apply(AbstractCommand<Class<?>, Member> cmd, Object receive, String next, PeekIterator<String> cmdline) {
+			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, String next, PeekIterator<String> cmdline) {
 				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(converters, next, cmdline)[0]; // FIXME
 																																	// not
-				ShellyDescriptable<Class<?>, Member> item = navigator.printHelp(cmd.getParent(), args);
+				Triggerable<Class<?>, Member> item = navigator.printHelp(Shell.find_group(cmd), args);
 				printHelp(item, System.err, formater, renderer);
 				return null;
 			}
@@ -96,7 +97,7 @@ public class HelpFactory {
 			}
 
 			@Override
-			public Description getDescription(Command<Class<?>, Member> cmd) {
+			public Description getDescription(Triggerable<Class<?>, Member> cmd) {
 				return HELP_DESCRIPTION;
 			}
 		};
@@ -141,7 +142,7 @@ public class HelpFactory {
 
 	static final HelpRenderer RENDERER = new HelpRenderer() {
 		@Override
-		public Help getHelp(ShellyDescriptable<Class<?>, Member> item) {
+		public Help getHelp(Triggerable<Class<?>, Member> item) {
 			final Help help = new Help();
 			item.accept(new Visitor<Class<?>, Member>() {
 				public void visit(Group<Class<?>, Member> grp) {
@@ -213,13 +214,13 @@ public class HelpFactory {
 
 	public static final HelpNavigator NAVIGATOR = new HelpNavigator() {
 		@Override
-		public ShellyDescriptable<Class<?>, Member> printHelp(Context<Class<?>, Member> context, String[] cmds) {
+		public Triggerable<Class<?>, Member> printHelp(Composite<Class<?>, Member> context, String[] cmds) {
 			if (cmds.length == 0) {
-				return (Group<Class<?>, Member>) context;
+				return Shell.find_group(context);
 			} else {
-				Command<Class<?>, Member> parent = (Group<Class<?>, Member>) context;
+				Action<Class<?>, Member> parent = (Group<Class<?>, Member>) context;
 				for (int i = 0; i < cmds.length; i++) {
-					Command<Class<?>, Member> cmd = Shell.find_command(parent, cmds[i]);
+					Action<Class<?>, Member> cmd = Shell.findAction(parent, cmds[i]);
 					if (cmd == null) {
 						System.out.println("No topic " + cmds[i]);
 						break;
@@ -276,11 +277,11 @@ public class HelpFactory {
 			addHelp(s);
 		}
 
-		void addLongHelp(ShellyDescriptable<Class<?>, Member> item) {
+		void addLongHelp(Triggerable<Class<?>, Member> item) {
 			addLongHelp(item.getDescription());
 		}
 
-		void addShortHelp(ShellyDescriptable<Class<?>, Member> item) {
+		void addShortHelp(Triggerable<Class<?>, Member> item) {
 			addHelp(item.getID(), item.getDescription().getLongDescription());
 		}
 

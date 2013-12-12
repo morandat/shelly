@@ -5,12 +5,13 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
-import fr.labri.shelly.Command;
+import fr.labri.shelly.Action;
+import fr.labri.shelly.Composite;
 import fr.labri.shelly.Context;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
-import fr.labri.shelly.ShellyItem;
+import fr.labri.shelly.Item;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
 
@@ -24,24 +25,24 @@ public class Executor {
 	public static void execute(Group<Class<?>, Member> start, final PeekIterator<String> cmdline) {
 		Executor executor = new Executor(cmdline); // TODO a method
 		Object ctx = executor.fillOptions(start, start.newGroup(null));
-		Command<Class<?>, Member> cmd = start;
-		Command<Class<?>, Member> last = cmd;
+		Action<Class<?>, Member> cmd = start;
+		Action<Class<?>, Member> last = cmd;
 
-		while ((cmd = Shell.find_command(last = cmd, executor._cmdline.peek())) != null)
+		while ((cmd = Shell.findAction(last = cmd, executor._cmdline.peek())) != null)
 			ctx = executor.executeCommand(executor._cmdline.next(), cmd, ctx);
 		if (last instanceof Group)
 			executor.executeDefault((Group<Class<?>, Member>) last, ctx);
 	}
 
 	private void executeDefault(Group<Class<?>, Member> subCmd, Object parent) {
-		Command<Class<?>, Member> dflt = subCmd.getDefault();
+		Action<Class<?>, Member> dflt = subCmd.getDefault();
 		if (dflt != null)
 			executeCommand(null, dflt, parent);
 		else
 			error(subCmd, parent);
 	}
 
-	private void error(Context<Class<?>, Member> grp, Object parent) {
+	private void error(Composite<Class<?>, Member> grp, Object parent) {
 		Class<?> c = grp.getAssociatedElement();
 		Method found = null;
 		for(Method m: c.getDeclaredMethods())
@@ -57,7 +58,7 @@ public class Executor {
 	}
 	
 
-	private void callError(Context<Class<?>, Member> grp, Method found, Object parent) {
+	private void callError(Composite<Class<?>, Member> grp, Method found, Object parent) {
 		ArrayList<String> arr = new ArrayList<String>();
 		while(_cmdline.hasNext())
 			arr.add(_cmdline.next());
@@ -67,16 +68,16 @@ public class Executor {
 		}
 	}
 
-	private Object executeCommand(String txt, Command<Class<?>, Member> subCmd, Object parent) {
-		parent = subCmd.createContext(parent);
-		parent = fillOptions(subCmd, parent);
-		subCmd.apply(parent, txt, _cmdline);
+	private Object executeCommand(String txt, Action<Class<?>, Member> cmd, Object parent) {
+		parent = cmd.createContext(parent);
+		parent = fillOptions(cmd, parent);
+		cmd.apply(parent, txt, _cmdline);
 		return parent;
 	}
 
-	private Object fillOptions(Command<Class<?>, Member> subCmd, Object parent) {
+	private Object fillOptions(Action<Class<?>, Member> subCmd, Object parent) {
 		OptionParserVisitor visitor = new OptionParserVisitor();
-		while (visitor.find_option(subCmd, parent))
+		while (visitor.setOption(subCmd, parent))
 			;
 		return parent;
 	}
@@ -85,7 +86,7 @@ public class Executor {
 		Object receive;
 
 		@Override
-		public void visit(ShellyItem<Class<?>, Member> item) {
+		public void visit(Item<Class<?>, Member> item) {
 			receive = null;
 		}
 
@@ -99,19 +100,23 @@ public class Executor {
 		public void visit(Context<Class<?>, Member> grp) {
 			grp.visit_options(this);
 
-			Context<Class<?>, Member> p = grp.getParent();
+			Composite<Class<?>, Member> p = grp.getParent();
 			if (p != null) {
 				receive = grp.getEnclosing(receive);
 				p.accept(this);
 			}
 		}
 
-		public boolean find_option(Command<Class<?>, Member> cmd, Object group) {
+		public boolean setOption(Action<Class<?>, Member> cmd, Object group) {
 			receive = group;
 			try {
+				System.out.println("visit "+ cmd + " " + _cmdline.peek());
+
 				visit_options(cmd);
 				return false;
 			} catch (FoundOption e) {
+				if(e.opt == null) return false;
+				System.out.println("found "+ e + " " + _cmdline.peek());
 				e.opt.apply(receive, _cmdline.next(), _cmdline);
 				return true;
 			}

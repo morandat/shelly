@@ -9,7 +9,7 @@ public class PrintVisitor extends Visitor {
 
 	}
 
-	public void visit(Context g) {
+	public void visit(Composite g) {
 		super.visit(g);
 	}
 
