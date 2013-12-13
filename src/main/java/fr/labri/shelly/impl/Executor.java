@@ -110,17 +110,13 @@ public class Executor {
 		public boolean setOption(Action<Class<?>, Member> cmd, Object group) {
 			receive = group;
 			try {
-				System.out.println("visit "+ cmd + " " + _cmdline.peek());
-
 				visit_options(cmd);
 				return false;
 			} catch (FoundOption e) {
 				if(e.opt == null) return false;
-				System.out.println("found "+ e + " " + _cmdline.peek());
 				e.opt.apply(receive, _cmdline.next(), _cmdline);
 				return true;
 			}
 		}
-
 	}
 }

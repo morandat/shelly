@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
+import fr.labri.shelly.impl.ExecutableModelFactory;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelBuilder;
 import fr.labri.shelly.impl.Executor;
@@ -31,7 +32,7 @@ public class Shell {
 	}
 
 	static public Shell createShell(Class<?> clazz) {
-		return createShell(new ModelBuilder.Executable(), clazz);
+		return createShell(new ExecutableModelFactory.Executable(), clazz);
 	}
 
 	public Group<Class<?>, Member> getRoot() {
@@ -128,18 +129,19 @@ public class Shell {
 		return find_option(grp, cmd);
 	}
 
-	public static Action<Class<?>, Member> findAction(Action<Class<?>, Member> start, final String cmd) {
+	public static <C, M> Action<C, M> findAction(Action<C, M> start, final String cmd) {
 		if (start instanceof Group) {
-			return find_command((Group<Class<?>, Member>) start, cmd);
+			return find_command((Group<C, M>) start, cmd);
 		}
 		return null;
 	}
 	
-	public static Action<Class<?>, Member> find_command(Group<Class<?>, Member> start, final String cmd) {
+	@SuppressWarnings("unchecked")
+	public static <C,M> Action<C, M> find_command(Group<C, M> start, final String cmd) {
 		try {
-			Visitor<Class<?>, Member> v = new Visitor.CommandVisitor<Class<?>, Member>() {
+			Visitor<C, M> v = new Visitor.CommandVisitor<C, M>() {
 				@Override
-				public void visit(Action<Class<?>, Member> grp) {
+				public void visit(Action<C, M> grp) {
 					if (grp.isValid(cmd)) {
 						throw new Visitor.FoundCommand(grp);
 					}
@@ -147,42 +149,44 @@ public class Shell {
 			};
 			start.visit_commands(v);
 		} catch (Visitor.FoundCommand e) {
-			return e.cmd;
+			return (Action<C, M>) e.cmd;
 		}
 		return null;
 	}
 	
-	public static Group<Class<?>, Member> find_group(Item<Class<?>, Member> start) {
+	@SuppressWarnings("unchecked")
+	public static <C,M> Group<C, M> find_group(Item<C, M> start) {
 		try {
-		start.accept(new Visitor<Class<?>, Member>() {
+		start.accept(new Visitor<C, M>() {
 			@Override
-			public void visit(Item<Class<?>, Member> i) {
+			public void visit(Item<C, M> i) {
 				visit_parent(i);
 			}
 			@Override
-			public void visit(Group<Class<?>, Member> cmdGroup) {
+			public void visit(Group<C, M> cmdGroup) {
 				throw new FoundCommand(cmdGroup);
 			}
 		});
 		} catch (FoundCommand e) {
-			return (Group<Class<?>, Member>)e.cmd;
+			return (Group<C, M>)e.cmd;
 		}
 		return null; 
 	}
 	
-	static public Option<Class<?>, Member> find_option(Action<Class<?>, Member> start, final String cmd) {
+	@SuppressWarnings("unchecked")
+	static public <C,M> Option<C, M> find_option(Action<C, M> start, final String cmd) {
 		try {
 			if (start instanceof Group) {
-				Visitor<Class<?>, Member> v = new OptionVisitor<Class<?>, Member>() {
-					public void visit(Option<Class<?>, Member> option) {
+				Visitor<C, M> v = new OptionVisitor<C, M>() {
+					public void visit(Option<C, M> option) {
 						if (option.getID().equals(cmd))
 							throw new FoundOption(option);
 					};
 				};
-				((Group<Class<?>, Member>) start).visit_options(v);
+				((Group<C, M>) start).visit_options(v);
 			}
 		} catch (FoundOption e) {
-			return e.opt;
+			return (Option<C, M>) e.opt;
 		}
 		return null;
 	}

@@ -39,30 +39,29 @@ public class HelpFactory {
 				} catch (InstantiationException | IllegalAccessException e) {
 				}
 			}
-			return newCommand(name, parent, converters, getHelpCommandAdapter(converters, method.isAnnotationPresent(Default.class), NAVIGATOR, FORMATER, RENDERER));
+			return newCommand(name, parent, method, converters, getHelpCommandAdapter(converters, method.isAnnotationPresent(Default.class), NAVIGATOR, FORMATER, RENDERER));
 		}
 		
 	}
 
 	public interface HelpNavigator {
-		public abstract Triggerable<Class<?>, Member> printHelp(Composite<Class<?>, Member> context, String[] cmds);
+		public abstract <C, M> Triggerable<C, M> printHelp(Composite<C, M> context, String[] cmds);
 	}
 
 	public interface HelpRenderer {
-		public abstract Help getHelp(Triggerable<Class<?>, Member> item);
+		public abstract <C, M> Help getHelp(Triggerable<C, M> item);
 	}
 
 	public interface HelpFormater {
 		String renderHelp(Help helpText);
-
 		void renderHelp(PrintStream out, Help helpText);
 	}
 
-	public static void printHelp(Triggerable<Class<?>, Member> item, PrintStream out) {
+	public static void printHelp(Triggerable<?,?> item, PrintStream out) {
 		printHelp(item, out, FORMATER, RENDERER);
 	}
 
-	public static void printHelp(Triggerable<Class<?>, Member> item, PrintStream out, HelpFormater formater, HelpRenderer renderer) {
+	public static void printHelp(Triggerable<?, ?> item, PrintStream out, HelpFormater formater, HelpRenderer renderer) {
 		formater.renderHelp(out, renderer.getHelp(item));
 	}
 
@@ -77,7 +76,7 @@ public class HelpFactory {
 	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, final boolean defaultcmd, ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
 		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class);
-		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, converters, getHelpCommandAdapter(converters, defaultcmd, navigator, formater, renderer));
+		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, null /*FIXME*/, converters, getHelpCommandAdapter(converters, defaultcmd, navigator, formater, renderer));
 	}
 
 	private static CommandAdapter getHelpCommandAdapter(final Converter<?>[] converters, final boolean isDefault, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
@@ -142,28 +141,29 @@ public class HelpFactory {
 
 	static final HelpRenderer RENDERER = new HelpRenderer() {
 		@Override
-		public Help getHelp(Triggerable<Class<?>, Member> item) {
+		public <C, M> Help getHelp(Triggerable<C, M> item) {
 			final Help help = new Help();
-			item.accept(new Visitor<Class<?>, Member>() {
-				public void visit(Group<Class<?>, Member> grp) {
+			item.accept(new Visitor<C, M>() {
+				public void visit(Group<C, M> grp) {
 					Description d =  grp.getDescription();
 					help.addTitle("Description");
 					help.addLongHelp(d);
 					help.skipLine();
 
 					help.addTitle("Commands");
+					System.out.println(d.getClass());
 					help.addHelp(d.getDescription());
 					help.skipLine();
 
 					help.addTitle("Options");
-					new OptionVisitor<Class<?>, Member>() {
-						public void visit(Option<Class<?>, Member> option) {
+					new OptionVisitor<C, M>() {
+						public void visit(Option<C, M> option) {
 							help.addShortHelp(option);
 						}
 					}.visit_options(grp);
 				}
 
-				public void visit(Command<Class<?>, Member> cmd) {
+				public void visit(Command<C, M> cmd) {
 					Description d = cmd.getDescription();
 					help.addTitle("Description");
 					help.addLongHelp(d);
@@ -174,14 +174,14 @@ public class HelpFactory {
 					help.skipLine();
 
 					help.addTitle("Option");
-					new OptionVisitor<Class<?>, Member>() {
-						public void visit(Option<Class<?>, Member> option) {
+					new OptionVisitor<C, M>() {
+						public void visit(Option<C, M> option) {
 							help.addShortHelp(option);
 						}
 					}.visit_options(cmd);
 				}
 
-				public void visit(Option<Class<?>, Member> opt) {
+				public void visit(Option<C, M> opt) {
 					help.addTitle("Description");
 					help.addLongHelp(opt);
 				}
@@ -214,13 +214,13 @@ public class HelpFactory {
 
 	public static final HelpNavigator NAVIGATOR = new HelpNavigator() {
 		@Override
-		public Triggerable<Class<?>, Member> printHelp(Composite<Class<?>, Member> context, String[] cmds) {
+		public <C,M> Triggerable<C, M> printHelp(Composite<C, M> context, String[] cmds) {
 			if (cmds.length == 0) {
 				return Shell.find_group(context);
 			} else {
-				Action<Class<?>, Member> parent = (Group<Class<?>, Member>) context;
+				Action<C, M> parent = Shell.find_group(context);
 				for (int i = 0; i < cmds.length; i++) {
-					Action<Class<?>, Member> cmd = Shell.findAction(parent, cmds[i]);
+					Action<C, M> cmd = Shell.findAction(parent, cmds[i]);
 					if (cmd == null) {
 						System.out.println("No topic " + cmds[i]);
 						break;
@@ -232,6 +232,7 @@ public class HelpFactory {
 			}
 		}
 	};
+	
 	static final Description HELP_DESCRIPTION = new Description() {
 		@Override
 		public String getShortDescription() {
@@ -248,6 +249,7 @@ public class HelpFactory {
 			return null;
 		}
 	};
+	
 	static class Help implements Iterable<String[]> {
 		static final String BLANK_LINE = "";
 		
@@ -264,6 +266,7 @@ public class HelpFactory {
 			
 		}
 		void addHelp(String[][] strings) {
+			if(strings == null) return;
 			for(String[] s: strings)
 				addHelp(s);
 		}
@@ -277,11 +280,11 @@ public class HelpFactory {
 			addHelp(s);
 		}
 
-		void addLongHelp(Triggerable<Class<?>, Member> item) {
+		void addLongHelp(Triggerable<?, ?> item) {
 			addLongHelp(item.getDescription());
 		}
 
-		void addShortHelp(Triggerable<Class<?>, Member> item) {
+		void addShortHelp(Triggerable<?, ?> item) {
 			addHelp(item.getID(), item.getDescription().getLongDescription());
 		}
 

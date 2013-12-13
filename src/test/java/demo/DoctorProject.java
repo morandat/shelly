@@ -4,6 +4,12 @@ import fr.labri.shelly.annotations.Command;
 import fr.labri.shelly.annotations.Context;
 
 public class DoctorProject {
+	public DoctorProject() {
+	}
+
+	public DoctorProject(MultiTool.GeneralOptions options) {
+	}
+
 	class Test1 {
 		@Command
 		void help() {};

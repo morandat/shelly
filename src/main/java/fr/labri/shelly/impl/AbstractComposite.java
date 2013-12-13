@@ -3,10 +3,14 @@ package fr.labri.shelly.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import fr.labri.shelly.Action;
+import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Item;
 import fr.labri.shelly.Visitor;
+import fr.labri.shelly.impl.Visitor.CommandVisitor;
+import fr.labri.shelly.impl.Visitor.FoundCommand;
 
 public abstract class AbstractComposite<C, M> implements Composite<C, M> {
 
@@ -78,13 +82,31 @@ public abstract class AbstractComposite<C, M> implements Composite<C, M> {
 		return commands;
 	}
 
+	@SuppressWarnings("unchecked")
+	public Action<C, M> getDefault() {
+		try {
+			Visitor<C, M> v = new CommandVisitor<C, M>() {
+				@Override
+				public void visit(Command<C, M> grp) {
+					if (grp.isDefault()) {
+						throw new FoundCommand(grp);
+					}
+				}
+			};
+			visit_commands(v);
+		} catch (FoundCommand e) {
+			return (Action<C, M>) e.cmd;
+		}
+		return null;
+	}
 	
-	static abstract class AbstractContext<C, M> extends AbstractComposite<C, M> implements fr.labri.shelly.Context<C, M> {
-		public AbstractContext(Composite<C, M> parent, String name, C clazz) {
-			super(parent, name, clazz);
-		}
-		public void accept(Visitor<C, M> visitor) {
-			visitor.visit(this);
-		}
+	@Override
+	public Object newGroup(Object parent) {
+		return null;
+	}
+
+	@Override
+	public Object getEnclosing(Object obj) {
+		return null;
 	}
 }

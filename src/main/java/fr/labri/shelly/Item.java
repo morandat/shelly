@@ -6,6 +6,7 @@ public interface Item<C, M> {
 
 	public abstract boolean isValid(String str);
 
+	public abstract void startVisit(Visitor<C, M> visitor);
 	public abstract void accept(Visitor<C, M> visitor);
 	public abstract void visit_all(Visitor<C, M> visitor);
 }

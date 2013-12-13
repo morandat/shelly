@@ -14,4 +14,20 @@ public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implem
 	public void accept(Visitor<C, M> visitor) {
 		visitor.visit((Group<C, M>) this);
 	}
+
+	@Override
+	public void startVisit(Visitor<C, M> visitor) {
+		visitor.visit(this);
+	}
+	
+
+	@Override
+	public Object createContext(Object parent) {
+		return null;
+	}
+
+	@Override
+	public Object apply(Object receive, String string, PeekIterator<String> _cmdline) {
+		return null;
+	}
 }

@@ -4,21 +4,19 @@ import fr.labri.shelly.Composite;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Visitor;
 
-public abstract class AbstractOption<C, M> implements Option<C, M> {
-	final String _id;
-	final Composite<C, M> _parent;
+public abstract class AbstractOption<C, M>  extends AbstractTerminal<C, M> implements Option<C, M> {
 
-	AbstractOption(Composite<C, M> parent, String name) {
-		_id = name;
-		_parent = parent;
+	protected AbstractOption(Composite<C, M> parent, String name, M item) {
+		super(name, parent, item);
+	}
+	
+	@Override
+	public void startVisit(Visitor<C, M> visitor) {
+		visitor.visit(this);
 	}
 
 	public void accept(Visitor<C, M> visitor) {
 		visitor.visit(this);
-	}
-
-	@Override
-	public void visit_all(Visitor<C, M> visitor) {
 	}
 
 	@Override
@@ -36,14 +34,5 @@ public abstract class AbstractOption<C, M> implements Option<C, M> {
 	}
 	static public boolean endsWith(String str, String suffix, int offset) {
 		return (offset + suffix.length() == str.length()) ? str.endsWith(suffix) : false;
-	}
-
-	public String getID() {
-		return _id;
-	}
-
-	@Override
-	public Composite<C, M> getParent() {
-		return _parent;
 	}
 }

@@ -4,11 +4,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Scanner;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
 
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Description;
@@ -21,8 +23,12 @@ import static fr.labri.shelly.annotations.AnnotationUtils.*;
 
 public class DescriptionFactory {
 
-	public static Description getDescription(AnnotatedElement elt, String shortDesc) {
-		fr.labri.shelly.annotations.Description a = elt.getAnnotation(fr.labri.shelly.annotations.Description.class);
+	static class Desc<M> {
+		String shortDesc, longDesc, url;
+		int type;
+	}
+	
+	public static Description getDescription(fr.labri.shelly.annotations.Description a, String shortDesc) {
 		String longDesc = shortDesc;
 		if (a != null) {
 			shortDesc = getName(a.summary(), shortDesc);
@@ -40,6 +46,20 @@ public class DescriptionFactory {
 				return new URLDescription(shortDesc, longDesc);
 		}
 		return new TextDescription(shortDesc, longDesc) ;
+	}
+
+	public static <V> Description getDescription(V elt, String shortDesc, AnnotationUtils.AnnotationType<V> a) {
+		return getDescription(a.getValue(elt, fr.labri.shelly.annotations.Description.class), shortDesc);
+	}
+	
+	public static Description getDescription(AnnotatedElement elt, String shortDesc) {
+		fr.labri.shelly.annotations.Description a = elt.getAnnotation(fr.labri.shelly.annotations.Description.class);
+		return getDescription(a, shortDesc);
+	}
+	
+	public static Description getDescription(Element elt, String shortDesc) {
+		fr.labri.shelly.annotations.Description a = elt.getAnnotation(fr.labri.shelly.annotations.Description.class);
+		return getDescription(a, shortDesc);
 	}
 	
 	static class TextDescription implements Description {
@@ -143,18 +163,25 @@ public class DescriptionFactory {
 		return list.toArray(res);
 	}
 	
-	public static Description getCommandDescription(final Method method, String shortDesc) {
+	public static Description getCommandDescription(Method method, String shortDesc) {
 		return Description.ExtraDescription.getExtraDescription(getDescription(method, shortDesc), describeParamaters(method));			
 	}
-	
-	public static Description getGroupDescription(final Group<Class<?>, Member> grp, String shortDesc) {
-		return Description.ExtraDescription.getExtraDescription(getDescription(grp.getAssociatedElement(), shortDesc), describeSubCommands(grp));			
+
+	public static <C, M, V extends C> Description getGroupDescription(final Group<C, M> grp, Class<?> c, String shortDesc) {
+		return Description.ExtraDescription.getExtraDescription(getDescription(c, shortDesc), describeSubCommands(grp));			
+	}
+	public static <C, M, V extends C> Description getGroupDescription(final Group<C, M> grp, TypeElement c, String shortDesc) {
+		return Description.ExtraDescription.getExtraDescription(getDescription(c, shortDesc), describeSubCommands(grp));			
+	}
+	@SuppressWarnings("unchecked")
+	public static <C, M, V extends C> Description getGroupDescription(final Group<C, M> grp, String shortDesc, AnnotationUtils.AnnotationType<V> ann) {
+		return Description.ExtraDescription.getExtraDescription(getDescription((V)grp.getAssociatedElement(), shortDesc, ann), describeSubCommands(grp));			
 	}
 	
-	static String[][] describeSubCommands(Group<Class<?>, Member> grp) {
+	static <C,M> String[][] describeSubCommands(Group<C, M> grp) {
 		final ArrayList<String[]> list = new ArrayList<String[]>();
-		new CommandVisitor<Class<?>, Member>() {
-			public void visit(Command<Class<?>, Member> cmd) {
+		new CommandVisitor<C, M>() {
+			public void visit(Command<C, M> cmd) {
 				list.add(new String[]{cmd.getID(), cmd.getDescription().getShortDescription()});
 			}
 		}.visit_commands(grp);

@@ -11,4 +11,8 @@ public interface Visitor<C, M> {
 	void visit(Terminal<C, M> option);
 	void visit(Action<C, M> option);
 
+	void startVisit(Option<C, M> option);
+	void startVisit(Command<C, M> cmd);
+	void startVisit(Group<C, M> cmdGroup);
+	void startVisit(Context<C, M> optionGroup);
 }

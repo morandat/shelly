@@ -1,7 +1,5 @@
 package fr.labri.shelly.impl;
 
-import java.lang.reflect.Member;
-
 import fr.labri.shelly.Action;
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Context;
@@ -120,19 +118,39 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 	
 	@SuppressWarnings("serial")
 	public static class FoundCommand extends RuntimeException {
-		public Action<Class<?>, Member> cmd;
+		public Action<?, ?> cmd;
 
-		public FoundCommand(Action<Class<?>, Member> cmd) {
+		public FoundCommand(Action<?,?> cmd) {
 			this.cmd = cmd;
 		}
 	}
 	
 	@SuppressWarnings("serial")
 	public static class FoundOption extends RuntimeException {
-		public Option<Class<?>, Member> opt;
+		public Option<?, ?> opt;
 
-		public FoundOption(Option<Class<?>, Member> opt) {
+		public FoundOption(Option<?, ?> opt) {
 			this.opt = opt;
 		}
+	}
+
+	@Override
+	public void startVisit(Option<C, M> option) {
+		visit(option);
+	}
+
+	@Override
+	public void startVisit(Command<C, M> cmd) {
+		visit(cmd);
+	}
+
+	@Override
+	public void startVisit(Group<C, M> cmdGroup) {
+		visit(cmdGroup);
+	}
+
+	@Override
+	public void startVisit(Context<C, M> optionGroup) {
+		visit(optionGroup);
 	}
 }
