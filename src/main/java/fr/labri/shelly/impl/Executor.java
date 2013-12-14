@@ -26,7 +26,7 @@ public class Executor {
 
 	public static void execute(Parser parser, Group<Class<?>, Member> start, final PeekIterator<String> cmdline) {
 		Executor executor = new Executor(parser, cmdline); // TODO a method
-		Object ctx = executor.fillOptions(start, start.newGroup(null));
+		Object ctx = executor.fillOptions(start, start.instantiateObject(null));
 		Action<Class<?>, Member> cmd = start;
 		Action<Class<?>, Member> last = cmd;
 
@@ -56,7 +56,7 @@ public class Executor {
 			callError(grp, found, parent);
 		else 
 			if(grp.getParent() != null)
-				error(grp.getParent(), grp.getEnclosing(parent));
+				error(grp.getParent(), grp.getEnclosingObject(parent));
 	}
 	
 
@@ -100,11 +100,11 @@ public class Executor {
 
 		@Override
 		public void visit(Context<Class<?>, Member> grp) {
-			grp.visit_options(this);
+			visit_options(grp);
 
 			Composite<Class<?>, Member> p = grp.getParent();
 			if (p != null) {
-				receive = grp.getEnclosing(receive);
+				receive = grp.getEnclosingObject(receive);
 				p.accept(this);
 			}
 		}

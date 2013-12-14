@@ -184,7 +184,7 @@ public class DescriptionFactory {
 			public void visit(Command<C, M> cmd) {
 				list.add(new String[]{cmd.getID(), cmd.getDescription().getShortDescription()});
 			}
-		}.visit_commands(grp);
+		}.startVisit(grp);
 		final String[][] res = new String[list.size()][]; 
 		return list.toArray(res);
 	}

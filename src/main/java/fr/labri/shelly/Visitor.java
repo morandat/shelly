@@ -15,4 +15,5 @@ public interface Visitor<C, M> {
 	void startVisit(Command<C, M> cmd);
 	void startVisit(Group<C, M> cmdGroup);
 	void startVisit(Context<C, M> optionGroup);
+	void startVisit(Composite<C, M> cmp);
 }

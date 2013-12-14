@@ -137,9 +137,9 @@ public class Doctor extends AbstractProcessor {
 				@Override
 				public Void visitTypeAsClass(TypeElement e, Composite<TypeElement, Element> p) {
 					if (e.getAnnotation(GROUP_CLASS) != null)
-						p.addCommand(createGroup(p, e.getAnnotation(GROUP_CLASS), e));
+						p.addItem(createGroup(p, e.getAnnotation(GROUP_CLASS), e));
 					else if (e.getAnnotation(CONTEXT_CLASS) != null)
-						p.addCommand(createContext(p, e.getAnnotation(CONTEXT_CLASS), e));
+						p.addItem(createContext(p, e.getAnnotation(CONTEXT_CLASS), e));
 					else
 						checkShellyAnotations(e);
 					return defaultAction(e, p);
@@ -148,16 +148,16 @@ public class Doctor extends AbstractProcessor {
 				@Override
 				public Void visitVariableAsField(VariableElement e, Composite<TypeElement, Element> p) {
 					if (e.getAnnotation(OPT_CLASS) != null)
-						p.addOption(createOption(e.getAnnotation(OPT_CLASS), e, p));
+						p.addItem(createOption(e.getAnnotation(OPT_CLASS), e, p));
 					return defaultAction(e, p);
 				}
 
 				@Override
 				public Void visitExecutableAsMethod(ExecutableElement e, Composite<TypeElement, Element> p) {
 					if (e.getAnnotation(CMD_CLASS) != null)
-						p.addCommand(createCommand(e.getAnnotation(CMD_CLASS), e, p));
+						p.addItem(createCommand(e.getAnnotation(CMD_CLASS), e, p));
 					else if (e.getAnnotation(OPT_CLASS) != null)
-						p.addOption(createOption(e.getAnnotation(OPT_CLASS), e, p));
+						p.addItem(createOption(e.getAnnotation(OPT_CLASS), e, p));
 					return defaultAction(e, p);
 				}
 			}

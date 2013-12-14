@@ -159,7 +159,7 @@ public class HelpFactory {
 						public void visit(Option<C, M> option) {
 							help.addShortHelp(option);
 						}
-					}.visit_options(grp);
+					}.startVisit(grp);
 				}
 
 				public void visit(Command<C, M> cmd) {
@@ -219,7 +219,7 @@ public class HelpFactory {
 			} else {
 				Action<C, M> parent = Shell.find_group(context);
 				for (int i = 0; i < cmds.length; i++) {
-					Action<C, M> cmd = Shell.findAction(parent, null, cmds[i]);
+					Action<C, M> cmd = Shell.findAction(parent, parser, cmds[i]);
 					if (cmd == null) {
 						System.out.println("No topic " + cmds[i]);
 						break;

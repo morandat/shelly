@@ -52,18 +52,18 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 				
 				for (Field f : clazz.getFields())
 					if (f.isAnnotationPresent(OPT_CLASS))
-						grp.addOption(createOption(f.getAnnotation(OPT_CLASS), f, grp));
+						grp.addItem(createOption(f.getAnnotation(OPT_CLASS), f, grp));
 				for (Method m : clazz.getMethods())
 					if (m.isAnnotationPresent(CMD_CLASS))
-						grp.addCommand(createCommand(m.getAnnotation(CMD_CLASS), m, grp));
+						grp.addItem(createCommand(m.getAnnotation(CMD_CLASS), m, grp));
 					else if (m.isAnnotationPresent(OPT_CLASS))
-							grp.addOption(createOption(m.getAnnotation(OPT_CLASS), m, grp));
+							grp.addItem(createOption(m.getAnnotation(OPT_CLASS), m, grp));
 
 				for (Class<?> c : clazz.getClasses())
 					if (c.isAnnotationPresent(GROUP_CLASS))
-						grp.addCommand(createGroup(grp, c.getAnnotation(GROUP_CLASS), c));
+						grp.addItem(createGroup(grp, c.getAnnotation(GROUP_CLASS), c));
 					else if (c.isAnnotationPresent(CONTEXT_CLASS))
-						grp.addCommand(createContext(grp, c.getAnnotation(CONTEXT_CLASS), c));
+						grp.addItem(createContext(grp, c.getAnnotation(CONTEXT_CLASS), c));
 			}
 			
 			protected ExecutableModelFactory getFactory(Class<? extends ExecutableModelFactory> factory) {
@@ -157,11 +157,11 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 		}
 
-		public Object newGroup(Object parent) {
+		public Object instantiateObject(Object parent) {
 			return ExecutableModelFactory.newGroup(_superThis != null, _ctor, parent);
 		}
 
-		public Object getEnclosing(Object obj) {
+		public Object getEnclosingObject(Object obj) {
 			try {
 				return _superThis.get(obj);
 			} catch (IllegalArgumentException | IllegalAccessException e) {
@@ -191,7 +191,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		public abstract Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text);
 
 		@Override
-		public Object newGroup(Object parent) {
+		public Object instantiateObject(Object parent) {
 			return ExecutableModelFactory.newGroup(_superThis != null, _ctor, parent);
 		}
 		
@@ -204,13 +204,13 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	public Context<Class<?>, Member> newContext(String name, Composite<Class<?>, Member> parent, Class<?> clazz, final CompositeAdapter adapter) {
 		return new AbstractContext<Class<?>, Member>(parent, name, clazz) {
 			@Override
-			public Object newGroup(Object parent) {
-				return adapter.newGroup(parent);
+			public Object instantiateObject(Object parent) {
+				return adapter.instantiateObject(parent);
 			}
 
 			@Override
-			public Object getEnclosing(Object obj) {
-				return adapter.getEnclosing(obj);
+			public Object getEnclosingObject(Object obj) {
+				return adapter.getEnclosingObject(obj);
 			}
 		};
 	}
@@ -245,8 +245,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 				return new InstVisitor().instantiate(this, parent);
 			}
 
-			public Object newGroup(Object parent) {
-				return adapter.newGroup(parent);
+			public Object instantiateObject(Object parent) {
+				return adapter.instantiateObject(parent);
 			}
 
 			@Override
@@ -260,8 +260,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 
 			@Override
-			public Object getEnclosing(Object parent) {
-				return adapter.getEnclosing(parent);
+			public Object getEnclosingObject(Object parent) {
+				return adapter.getEnclosingObject(parent);
 			}
 
 			@Override
@@ -410,7 +410,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		@Override
 		public void visit(Composite<Class<?>, Member> ctx) {
 			visit_parent(ctx);
-			group = ctx.newGroup(group);
+			group = ctx.instantiateObject(group);
 		}
 
 		@Override

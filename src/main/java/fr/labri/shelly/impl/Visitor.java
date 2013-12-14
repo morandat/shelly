@@ -20,6 +20,32 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 			p.accept(this);
 	}
 	
+	public void visit_options(Item<C, M> comp) {
+		Visitor<C, M> option_visitor = new Visitor<C, M>() {
+			@Override
+			public void visit(Option<C, M> option) {
+				Visitor.this.visit(option);
+			}
+			@Override
+			public void startVisit(Composite<C, M> cmp) {
+				cmp.visit_all(this);
+			}
+		};
+		comp.visit_all(option_visitor);
+	}
+	public void visit_commands(Composite<C, M> comp) {
+		Visitor<C, M> option_visitor = new Visitor<C, M>() {
+			@Override
+			public void visit(Command<C, M> option) {
+				Visitor.this.visit(option);
+			}
+			@Override
+			public void visit(Composite<C, M> optionGroup) {
+				visit((Item<C, M>)optionGroup);
+			}
+		};
+		comp.visit_all(option_visitor);
+	}
 	@Override
 	public void visit(Option<C, M> option) {
 		visit((Terminal<C, M>)option);
@@ -79,15 +105,12 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 
 		@Override
 		public void visit(Composite<C, M> grp) {
-			grp.visit_options(this);
+			visit_options(grp);
 			visit_parent(grp);
 		}
-
-		public void visit_options(Action<C, M> cmd) {
-			if (cmd instanceof Group) {
-				visit((Composite<C, M>) (Group<C, M>)cmd);
-			} else
-				cmd.accept(this);
+		
+		public void startVisit(Group<C, M> cmdGroup) {
+			cmdGroup.visit_all(this);
 		}
 	}
 
@@ -101,7 +124,7 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 		
 		@Override
 		public void visit(Composite<C, M> cmd) {
-			cmd.visit_commands(this);
+			visit_commands(cmd);
 		}
 		@Override
 		public void visit(Command<C, M> cmd) {
@@ -146,11 +169,16 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 
 	@Override
 	public void startVisit(Group<C, M> cmdGroup) {
-		visit(cmdGroup);
+		startVisit((Composite<C, M>)cmdGroup);
 	}
 
 	@Override
 	public void startVisit(Context<C, M> optionGroup) {
+		startVisit((Composite<C, M>)optionGroup);
+	}
+	
+	@Override
+	public void startVisit(Composite<C, M> optionGroup) {
 		visit(optionGroup);
 	}
 }

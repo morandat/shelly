@@ -41,24 +41,8 @@ public class Shell {
 		return grp;
 	}
 
-	void addCommand(Command<Class<?>, Member> cmd) {
-		addCommand(getRoot(), cmd);
-	}
-
-	static void addCommand(Composite<Class<?>, Member> group, Command<Class<?>, Member> cmd) {
-		group.addCommand(cmd);
-	}
-
-	static void addCommand(Composite<Class<?>, Member> group, Composite<Class<?>, Member> cmd) {
-		group.addCommand(cmd);
-	}
-
-	void addOption(Option<Class<?>, Member> opt) {
-		addOption(getRoot(), opt);
-	}
-
-	static void addOption(Composite<Class<?>, Member> group, Option<Class<?>, Member> opt) {
-		group.addOption(opt);
+	void addItem(Command<Class<?>, Member> cmd) {
+		getRoot().addItem(cmd);
 	}
 
 	public void printHelp(PrintStream out) {
@@ -149,12 +133,13 @@ public class Shell {
 			Visitor<C, M> v = new Visitor.CommandVisitor<C, M>() {
 				@Override
 				public void visit(Action<C, M> grp) {
-					if (parser.isValid(cmd, grp)) {
+					Parser p = parser;
+					if (p.isValid(cmd, grp)) {
 						throw new Visitor.FoundCommand(grp);
 					}
 				}
 			};
-			start.visit_commands(v);
+			v.visit_commands(start);
 		} catch (Visitor.FoundCommand e) {
 			return (Action<C, M>) e.cmd;
 		}
@@ -184,13 +169,13 @@ public class Shell {
 	static public <C,M> Option<C, M> find_option(Action<C, M> start, final Parser parser, final String cmd) {
 		try {
 			if (start instanceof Group) {
-				Visitor<C, M> v = new OptionVisitor<C, M>() {
+				OptionVisitor<C, M> v = new OptionVisitor<C, M>() {
 					public void visit(Option<C, M> option) {
 						if (parser.isValid(cmd, option))
 							throw new FoundOption(option);
 					};
 				};
-				((Group<C, M>) start).visit_options(v);
+				v.visit_options(start);
 			}
 		} catch (FoundOption e) {
 			return (Option<C, M>) e.opt;

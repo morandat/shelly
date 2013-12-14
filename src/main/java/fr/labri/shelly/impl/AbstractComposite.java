@@ -6,7 +6,6 @@ import java.util.List;
 import fr.labri.shelly.Action;
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
-import fr.labri.shelly.Option;
 import fr.labri.shelly.Item;
 import fr.labri.shelly.Visitor;
 import fr.labri.shelly.impl.Visitor.CommandVisitor;
@@ -19,7 +18,6 @@ public abstract class AbstractComposite<C, M> implements Composite<C, M> {
 
 	protected final C _clazz;
 
-	protected final List<Option<C, M>> options = new ArrayList<Option<C, M>>();
 	protected final List<Item<C, M>> commands = new ArrayList<Item<C, M>>();
 
 	public AbstractComposite(Composite<C, M> parent, String name, C clazz) {
@@ -28,27 +26,13 @@ public abstract class AbstractComposite<C, M> implements Composite<C, M> {
 		_clazz = clazz;
 	}
 
-	public void visit_options(Visitor<C, M> visitor) {
-		for (Option<C, M> cmd : options)
-			cmd.accept(visitor);
-	}
-
-	public void visit_commands(Visitor<C, M> visitor) {
+	@Override
+	public void visit_all(Visitor<C, M> visitor) {
 		for (Item<C, M> cmd : commands)
 			cmd.accept(visitor);
 	}
 
-	@Override
-	public void visit_all(Visitor<C, M> visitor) {
-		visit_options(visitor);
-		visit_commands(visitor);
-	}
-
-	public void addOption(Option<C, M> option) {
-		options.add(option);
-	}
-
-	public void addCommand(Item<C, M> cmd) {
+	public void addItem(Item<C, M> cmd) { //FIXME rename to add, and commands to items
 		commands.add(cmd);
 	}
 
@@ -68,11 +52,6 @@ public abstract class AbstractComposite<C, M> implements Composite<C, M> {
 	}
 
 	@Override
-	public Iterable<Option<C, M>> getOptions() {
-		return options;
-	}
-
-	@Override
 	public Iterable<Item<C, M>> getItems() {
 		return commands;
 	}
@@ -88,7 +67,7 @@ public abstract class AbstractComposite<C, M> implements Composite<C, M> {
 					}
 				}
 			};
-			visit_commands(v);
+			visit_all(v);
 		} catch (FoundCommand e) {
 			return (Action<C, M>) e.cmd;
 		}
@@ -96,12 +75,12 @@ public abstract class AbstractComposite<C, M> implements Composite<C, M> {
 	}
 	
 	@Override
-	public Object newGroup(Object parent) {
+	public Object instantiateObject(Object parent) {
 		return null;
 	}
 
 	@Override
-	public Object getEnclosing(Object obj) {
+	public Object getEnclosingObject(Object obj) {
 		return null;
 	}
 }
