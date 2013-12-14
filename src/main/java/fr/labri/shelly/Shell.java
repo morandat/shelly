@@ -113,7 +113,7 @@ public class Shell {
 	}
 
 	public Action<Class<?>, Member> find_command(Parser parser, String cmd) {
-		return find_command(getRoot(), parser, cmd);
+		return findAction(getRoot(), parser, cmd);
 	}
 
 	public Option<Class<?>, Member> find_option(Parser parser, String cmd) {
@@ -122,24 +122,23 @@ public class Shell {
 
 	public static <C, M> Action<C, M> findAction(Action<C, M> start, Parser parser, final String cmd) {
 		if (start instanceof Group) {
-			return find_command((Group<C, M>) start, parser, cmd);
+			return findAction((Group<C, M>) start, parser, cmd);
 		}
 		return null;
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <C,M> Action<C, M> find_command(Group<C, M> start, final Parser parser, final String cmd) {
+	public static <C,M> Action<C, M> findAction(Group<C, M> start, final Parser parser, final String cmd) {
 		try {
-			Visitor<C, M> v = new Visitor.CommandVisitor<C, M>() {
+			Visitor<C, M> v = new Visitor.ActionVisitor<C, M>() {
 				@Override
 				public void visit(Action<C, M> grp) {
-					Parser p = parser;
-					if (p.isValid(cmd, grp)) {
+					if (parser.isValid(cmd, grp)) {
 						throw new Visitor.FoundCommand(grp);
 					}
 				}
 			};
-			v.visit_commands(start);
+			v.visit_actions(start);
 		} catch (Visitor.FoundCommand e) {
 			return (Action<C, M>) e.cmd;
 		}

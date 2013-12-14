@@ -1,22 +1,15 @@
 package fr.labri.shelly.impl;
 
+import java.lang.annotation.Annotation;
+
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Terminal;
-import fr.labri.shelly.Visitor;
 
-public abstract class AbstractTerminal<C, M> implements Terminal<C, M> {
+public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implements Terminal<C, M> {
 		protected final M _element;
-		protected final Composite<C, M> _parent;
-		protected final String _id;
-		
-		public AbstractTerminal(String name, Composite<C, M> parent, M item) {
-			_id = name;
-			_parent = parent;
+		public AbstractTerminal(String name, Composite<C, M> parent, M item, Annotation[] annotations) {
+			super(name, parent, annotations);
 			_element = item;
-		}
-
-		public String getID() {
-			return _id;
 		}
 
 		@Override
@@ -29,15 +22,6 @@ public abstract class AbstractTerminal<C, M> implements Terminal<C, M> {
 			return _element;
 		}
 
-		@Override
-		public void visit_all(Visitor<C, M> visitor) {
-		}
-
-		@Override
-		public Composite<C, M> getParent() {
-			return _parent;
-		}
-		
 		static public int startWith(String str, String prefix, int offset) {
 			return str.startsWith(prefix, offset) ? prefix.length() : -1;
 		}

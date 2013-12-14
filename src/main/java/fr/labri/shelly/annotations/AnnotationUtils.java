@@ -3,9 +3,13 @@ package fr.labri.shelly.annotations;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 
 import fr.labri.shelly.ConverterFactory;
@@ -177,6 +181,25 @@ public class AnnotationUtils {
 		}
 	}
 
+	public static Annotation[] getAnnotation(Element clazz) {
+		List<? extends AnnotationMirror> l = clazz.getAnnotationMirrors();
+		ArrayList<Annotation> res = new ArrayList<Annotation>(l.size());
+		for(Class<? extends Annotation> a : ModelFactory.SHELLY_ANNOTATIONS) {
+			Annotation v = clazz.getAnnotation(a);
+			if(clazz != null)
+				res.add(v);
+		}
+		return res.toArray(new Annotation[l.size()]);
+	}
+
+	public static Annotation[] getAnnotation(Member item) {
+		return getAnnotation((AnnotatedElement) item);
+	}
+	
+	public static Annotation[] getAnnotation(AnnotatedElement item) {
+		return item.getAnnotations();
+	}
+	
 	// public static Class<? extends ConverterFactory> getConverterFactory(Group annotation) {
 	// try {
 	// return getConverterFactory(annotation.converter());

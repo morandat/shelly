@@ -1,13 +1,15 @@
 package fr.labri.shelly.impl;
 
+import java.lang.annotation.Annotation;
+
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.Visitor;
 
 public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implements Group<C, M>, Triggerable<C,M> {
-	public AbstractGroup(Composite<C, M> parent, String name, C clazz) {
-		super(parent, name, clazz);
+	public AbstractGroup(Composite<C, M> parent, String name, C clazz, Annotation[] annotations) {
+		super(parent, name, clazz, annotations);
 	}
 
 	@Override
@@ -33,5 +35,10 @@ public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implem
 	@Override
 	public Object apply(Object receive, String string, Executor executor) {
 		return null;
+	}
+	
+	@Override
+	public String toString() {
+		return "group " + getID();
 	}
 }

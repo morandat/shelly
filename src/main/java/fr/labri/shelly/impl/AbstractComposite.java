@@ -1,28 +1,20 @@
 package fr.labri.shelly.impl;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
-import fr.labri.shelly.Action;
-import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Item;
 import fr.labri.shelly.Visitor;
-import fr.labri.shelly.impl.Visitor.CommandVisitor;
-import fr.labri.shelly.impl.Visitor.FoundCommand;
 
-public abstract class AbstractComposite<C, M> implements Composite<C, M> {
-
-	protected final String _id;
-	protected final fr.labri.shelly.Composite<C, M> _parent;
+public abstract class AbstractComposite<C, M> extends AbstractItem<C, M> implements Composite<C, M> {
 
 	protected final C _clazz;
-
 	protected final List<Item<C, M>> commands = new ArrayList<Item<C, M>>();
 
-	public AbstractComposite(Composite<C, M> parent, String name, C clazz) {
-		_parent = parent;
-		_id = name;
+	public AbstractComposite(Composite<C, M> parent, String name, C clazz, Annotation[] annotations) {
+		super(name, parent, annotations);
 		_clazz = clazz;
 	}
 
@@ -56,24 +48,6 @@ public abstract class AbstractComposite<C, M> implements Composite<C, M> {
 		return commands;
 	}
 
-	@SuppressWarnings("unchecked")
-	public Action<C, M> getDefault() {
-		try {
-			Visitor<C, M> v = new CommandVisitor<C, M>() {
-				@Override
-				public void visit(Command<C, M> grp) {
-					if (grp.isDefault()) {
-						throw new FoundCommand(grp);
-					}
-				}
-			};
-			visit_all(v);
-		} catch (FoundCommand e) {
-			return (Action<C, M>) e.cmd;
-		}
-		return null;
-	}
-	
 	@Override
 	public Object instantiateObject(Object parent) {
 		return null;

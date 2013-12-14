@@ -6,13 +6,18 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 import fr.labri.shelly.Action;
+import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Context;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Item;
+import fr.labri.shelly.Visitor;
+import fr.labri.shelly.annotations.Default;
 import fr.labri.shelly.annotations.Error;
+import fr.labri.shelly.impl.Visitor.ActionVisitor;
+import fr.labri.shelly.impl.Visitor.FoundCommand;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
 
 public class Executor {
@@ -36,33 +41,47 @@ public class Executor {
 			executor.executeDefault((Group<Class<?>, Member>) last, ctx);
 	}
 
-	private void executeDefault(Group<Class<?>, Member> subCmd, Object parent) {
-		Action<Class<?>, Member> dflt = subCmd.getDefault();
+	public void executeDefault(Group<Class<?>, Member> subCmd, Object parent) {
+		Action<Class<?>, Member> dflt = getDefault(subCmd);
 		if (dflt != null)
 			executeCommand(null, dflt, parent);
 		else
 			error(subCmd, parent);
 	}
-
-	private void error(Composite<Class<?>, Member> grp, Object parent) {
-		Class<?> c = grp.getAssociatedElement();
-		Method found = null;
-		for(Method m: c.getDeclaredMethods())
-			if(m.isAnnotationPresent(Error.class)) {
-				found = m;
-				break;
-			}
-		if(found != null)
-			callError(grp, found, parent);
-		else 
-			if(grp.getParent() != null)
-				error(grp.getParent(), grp.getEnclosingObject(parent));
-	}
 	
+	@SuppressWarnings("unchecked")
+	public Action<Class<?>, Member> getDefault(Group<Class<?>, Member> grp) {
+		try {
+			Visitor<Class<?>, Member> v = new ActionVisitor<Class<?>, Member>() {
+				@Override
+				public void visit(Command<Class<?>, Member> grp) {
+					if (grp.hasAnnotation(Default.class)) {
+						throw new FoundCommand(grp);
+					}
+				}
+			};
+			grp.visit_all(v);
+		} catch (FoundCommand e) {
+			return (Action<Class<?>, Member>) e.cmd;
+		}
+		return null;
+	}
 
-	private void callError(Composite<Class<?>, Member> grp, Method found, Object parent) {
+	public void error(Composite<Class<?>, Member> grp, Object receiv) {
+		while(grp != null) {
+			for(Method m : receiv.getClass().getDeclaredMethods())
+				if(m.isAnnotationPresent(Error.class)) {
+					callError(m, receiv);
+					return;
+				} else
+					if(grp.getParent() != null)
+						receiv = grp.getEnclosingObject(receiv);
+		}
+	}
+
+	public void callError(Method found, Object parent) {
 		ArrayList<String> arr = new ArrayList<String>();
-		while(_cmdline.hasNext())
+		while (_cmdline.hasNext())
 			arr.add(_cmdline.next());
 		try {
 			found.invoke(parent, new RuntimeException("Command not found"), arr.toArray(new String[arr.size()]));
@@ -70,7 +89,7 @@ public class Executor {
 		}
 	}
 
-	private Object executeCommand(String txt, Action<Class<?>, Member> cmd, Object parent) {
+	public Object executeCommand(String txt, Action<Class<?>, Member> cmd, Object parent) {
 		parent = cmd.createContext(parent);
 		parent = fillOptions(cmd, parent);
 		cmd.apply(parent, txt, this);
@@ -115,7 +134,8 @@ public class Executor {
 				visit_options(cmd);
 				return false;
 			} catch (FoundOption e) {
-				if(e.opt == null) return false;
+				if (e.opt == null)
+					return false;
 				e.opt.apply(receive, _cmdline.next(), Executor.this);
 				return true;
 			}

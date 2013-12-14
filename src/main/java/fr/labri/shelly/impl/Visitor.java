@@ -1,5 +1,7 @@
 package fr.labri.shelly.impl;
 
+import java.lang.annotation.Annotation;
+
 import fr.labri.shelly.Action;
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Context;
@@ -31,17 +33,25 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 				cmp.visit_all(this);
 			}
 		};
-		comp.visit_all(option_visitor);
+		comp.startVisit(option_visitor);
 	}
-	public void visit_commands(Composite<C, M> comp) {
+	public void visit_actions(Composite<C, M> comp) {
 		Visitor<C, M> option_visitor = new Visitor<C, M>() {
 			@Override
-			public void visit(Command<C, M> option) {
+			public void visit(Action<C, M> option) {
 				Visitor.this.visit(option);
 			}
 			@Override
-			public void visit(Composite<C, M> optionGroup) {
-				visit((Item<C, M>)optionGroup);
+			public void visit(Group<C, M> cmp) {
+				visit((Action<C, M>) cmp);
+			}
+			@Override
+			public void visit(Composite<C, M> cmp) {
+				cmp.visit_all(this);
+			}
+			@Override
+			public void startVisit(Composite<C, M> cmp) {
+				cmp.visit_all(this);
 			}
 		};
 		comp.visit_all(option_visitor);
@@ -83,7 +93,7 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 	
 	public static class TraversalVisitor<C, M> extends Visitor<C, M> {
 		@Override
-		public void visit(Item<C, M> item) {
+		public void visit(Composite<C, M> item) {
 			item.visit_all(this);
 		}
 		@Override
@@ -92,6 +102,10 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 		}
 	}
 	public static class ParentVisitor<C, M> extends Visitor<C, M> {
+		@Override
+		public void visit(Item<C, M> option) {
+			visit_parent(option);
+		}
 		
 	}	
 	public static class OptionVisitor<C, M> extends Visitor<C, M> {
@@ -115,7 +129,7 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 	}
 
 	
-	public static class CommandVisitor<C, M> extends Visitor<C, M> {
+	public static class ActionVisitor<C, M> extends Visitor<C, M> {
 		
 		@Override
 		public void visit(Group<C, M> cmdGrp) {
@@ -124,18 +138,15 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 		
 		@Override
 		public void visit(Composite<C, M> cmd) {
-			visit_commands(cmd);
+			cmd.visit_all(this);
 		}
 		@Override
 		public void visit(Command<C, M> cmd) {
 			visit((Action<C, M>)cmd);
 		}
 		
-		public void visit_commands(Action<C, M> cmd) {
-			if (cmd instanceof Group) {
-				visit((Composite<C, M>) (Group<C, M>)cmd);
-			} else
-				cmd.accept(this);
+		public void startVisit(Group<C, M> cmdGroup) {
+			cmdGroup.visit_all(this);
 		}
 	}
 	
@@ -154,6 +165,15 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 
 		public FoundOption(Option<?, ?> opt) {
 			this.opt = opt;
+		}
+	}
+	
+	@SuppressWarnings("serial")
+	public static class FoundAnnotation extends RuntimeException {
+		public Annotation annotation;
+
+		public FoundAnnotation(Annotation a) {
+			this.annotation = a;
 		}
 	}
 

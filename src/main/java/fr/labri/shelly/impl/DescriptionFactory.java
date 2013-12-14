@@ -12,13 +12,13 @@ import java.util.Scanner;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 
-import fr.labri.shelly.Command;
+import fr.labri.shelly.Action;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.annotations.AnnotationUtils;
 import fr.labri.shelly.annotations.Option;
 import fr.labri.shelly.annotations.Param;
-import fr.labri.shelly.impl.Visitor.CommandVisitor;
+import fr.labri.shelly.impl.Visitor.ActionVisitor;
 import static fr.labri.shelly.annotations.AnnotationUtils.*;
 
 public class DescriptionFactory {
@@ -180,8 +180,8 @@ public class DescriptionFactory {
 	
 	static <C,M> String[][] describeSubCommands(Group<C, M> grp) {
 		final ArrayList<String[]> list = new ArrayList<String[]>();
-		new CommandVisitor<C, M>() {
-			public void visit(Command<C, M> cmd) {
+		new ActionVisitor<C, M>() {
+			public void visit(Action<C, M> cmd) {
 				list.add(new String[]{cmd.getID(), cmd.getDescription().getShortDescription()});
 			}
 		}.startVisit(grp);

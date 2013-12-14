@@ -12,13 +12,13 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.ElementKindVisitor7;
 
+import fr.labri.shelly.Action;
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Context;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Group;
-import fr.labri.shelly.Item;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Terminal;
@@ -227,37 +227,24 @@ public class Doctor extends AbstractProcessor {
 
 	class ElementModelFactory implements ModelFactory<TypeElement, Element> {
 		public Group<TypeElement, Element> newGroup(final String name, Composite<TypeElement, Element> parent, TypeElement clazz) {
-			final boolean isDefault = clazz.getAnnotation(DEFAULT_CLASS) != null;
-			return new AbstractGroup<TypeElement, Element>(parent, name, clazz) {
+			return new AbstractGroup<TypeElement, Element>(parent, name, clazz, AnnotationUtils.getAnnotation(clazz)) {
 				@Override
 				public Description getDescription() {
 					return DescriptionFactory.getGroupDescription(this, _clazz, SUMMARY.getGroup(_clazz));
-				}
-
-				@Override
-				public boolean isDefault() {
-					return isDefault;
 				}
 			};
 		}
 
 		@Override
 		public Context<TypeElement, Element> newContext(String name, Composite<TypeElement, Element> parent, TypeElement clazz) {
-			return new AbstractContext<TypeElement, Element>(parent, name, clazz) {
+			return new AbstractContext<TypeElement, Element>(parent, name, clazz, AnnotationUtils.getAnnotation(clazz)) {
 			};
 		}
 
 		@Override
 		public Command<TypeElement, Element> newCommand(ConverterFactory loadFactory, Composite<TypeElement, Element> parent, final String name,
 				final Element member) {
-			final boolean isDefault = member.getAnnotation(DEFAULT_CLASS) != null;
-
-			return new AbstractCommand<TypeElement, Element>(name, parent, member) {
-				@Override
-				public boolean isDefault() {
-					return isDefault;
-				}
-
+			return new AbstractCommand<TypeElement, Element>(name, parent, member, AnnotationUtils.getAnnotation(member)) {
 				@Override
 				public Description getDescription() {
 					return DescriptionFactory.getDescription(member, name);
@@ -268,7 +255,7 @@ public class Doctor extends AbstractProcessor {
 		@Override
 		public Option<TypeElement, Element> newOption(ConverterFactory loadFactory, Composite<TypeElement, Element> parent, final String name,
 				final Element member) {
-			return new AbstractOption<TypeElement, Element>(parent, name, member) {
+			return new AbstractOption<TypeElement, Element>(parent, name, member, AnnotationUtils.getAnnotation(member)) {
 				@Override
 				public Description getDescription() {
 					return DescriptionFactory.getDescription(member, name);

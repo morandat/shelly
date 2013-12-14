@@ -16,7 +16,6 @@ import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Triggerable;
-import fr.labri.shelly.annotations.Default;
 import fr.labri.shelly.impl.ExecutableModelFactory.CommandAdapter;
 
 public class HelpFactory {
@@ -39,7 +38,7 @@ public class HelpFactory {
 				} catch (InstantiationException | IllegalAccessException e) {
 				}
 			}
-			return newCommand(name, parent, method, converters, getHelpCommandAdapter(converters, method.isAnnotationPresent(Default.class), NAVIGATOR, FORMATER, RENDERER));
+			return newCommand(name, parent, method, converters, getHelpCommandAdapter(converters, NAVIGATOR, FORMATER, RENDERER));
 		}
 		
 	}
@@ -66,20 +65,20 @@ public class HelpFactory {
 	}
 
 	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent) {
-		return getHelpCommand(parent, "help", true, fr.labri.shelly.impl.ConverterFactory.DEFAULT);
+		return getHelpCommand(parent, "help", fr.labri.shelly.impl.ConverterFactory.DEFAULT);
 	}
 
-	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, final boolean defaultcmd, ConverterFactory factory) {
-		return getHelpCommand(parent, name, defaultcmd, factory, NAVIGATOR, FORMATER, RENDERER);
+	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, ConverterFactory factory) {
+		return getHelpCommand(parent, name, factory, NAVIGATOR, FORMATER, RENDERER);
 	}
 
-	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, final boolean defaultcmd, ConverterFactory factory, final HelpNavigator navigator,
+	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name,ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
 		final Converter<?>[] converters = (Converter<?>[]) fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class);
-		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, null /*FIXME*/, converters, getHelpCommandAdapter(converters, defaultcmd, navigator, formater, renderer));
+		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, null /*FIXME*/, converters, getHelpCommandAdapter(converters, navigator, formater, renderer));
 	}
 
-	private static CommandAdapter getHelpCommandAdapter(final Converter<?>[] converters, final boolean isDefault, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
+	private static CommandAdapter getHelpCommandAdapter(final Converter<?>[] converters, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
 		return new CommandAdapter() {
 			@Override
 			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, Executor executor, String next) {
@@ -87,11 +86,6 @@ public class HelpFactory {
 				Triggerable<Class<?>, Member> item = navigator.findTopic(Shell.find_group(cmd), executor.getParser(), args); // FIXME
 				printHelp(item, System.err, formater, renderer);
 				return null;
-			}
-
-			@Override
-			public boolean isDefault() {
-				return isDefault;
 			}
 
 			@Override

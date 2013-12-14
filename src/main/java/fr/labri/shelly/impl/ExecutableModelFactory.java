@@ -18,6 +18,7 @@ import fr.labri.shelly.Group;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Triggerable;
+import fr.labri.shelly.annotations.AnnotationUtils;
 import fr.labri.shelly.annotations.AnnotationUtils.ReflectValue;
 
 public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
@@ -52,18 +53,18 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 				
 				for (Field f : clazz.getFields())
 					if (f.isAnnotationPresent(OPT_CLASS))
-						grp.addItem(createOption(f.getAnnotation(OPT_CLASS), f, grp));
+						grp.addItem(createOption(grp.getAnnotation(OPT_CLASS), f, grp));
 				for (Method m : clazz.getMethods())
 					if (m.isAnnotationPresent(CMD_CLASS))
-						grp.addItem(createCommand(m.getAnnotation(CMD_CLASS), m, grp));
+						grp.addItem(createCommand(grp.getAnnotation(CMD_CLASS), m, grp));
 					else if (m.isAnnotationPresent(OPT_CLASS))
-							grp.addItem(createOption(m.getAnnotation(OPT_CLASS), m, grp));
+							grp.addItem(createOption(grp.getAnnotation(OPT_CLASS), m, grp));
 
 				for (Class<?> c : clazz.getClasses())
 					if (c.isAnnotationPresent(GROUP_CLASS))
-						grp.addItem(createGroup(grp, c.getAnnotation(GROUP_CLASS), c));
+						grp.addItem(createGroup(grp, grp.getAnnotation(GROUP_CLASS), c));
 					else if (c.isAnnotationPresent(CONTEXT_CLASS))
-						grp.addItem(createContext(grp, c.getAnnotation(CONTEXT_CLASS), c));
+						grp.addItem(createContext(grp, grp.getAnnotation(CONTEXT_CLASS), c));
 			}
 			
 			protected ExecutableModelFactory getFactory(Class<? extends ExecutableModelFactory> factory) {
@@ -122,7 +123,6 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 	
 	public interface ActionAdapter extends TriggerableAdapter {
-		public abstract boolean isDefault();
 	}
 	
 	public interface TriggerableAdapter {
@@ -195,14 +195,13 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			return ExecutableModelFactory.newGroup(_superThis != null, _ctor, parent);
 		}
 		
-		public Object apply(AbstractGroup<Class<?>, Member> abstractGroup, Object receive, Executor executor) {
+		public Object apply(AbstractGroup<Class<?>, Member> grp, Object receive, Executor executor) {
 			return receive;
 		}
-		abstract public boolean isDefault();
 	}
 
 	public Context<Class<?>, Member> newContext(String name, Composite<Class<?>, Member> parent, Class<?> clazz, final CompositeAdapter adapter) {
-		return new AbstractContext<Class<?>, Member>(parent, name, clazz) {
+		return new AbstractContext<Class<?>, Member>(parent, name, clazz, AnnotationUtils.getAnnotation(clazz)) {
 			@Override
 			public Object instantiateObject(Object parent) {
 				return adapter.instantiateObject(parent);
@@ -225,11 +224,6 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	public Group<Class<?>, Member> newGroup(String name, Composite<Class<?>, Member> parent, final Class<?> clazz) {
 		final GroupAdapter adapter = new GroupAdapter(clazz) {
 			@Override
-			public boolean isDefault() {
-				return clazz.isAnnotationPresent(DEFAULT_CLASS);
-			}
-
-			@Override
 			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
 				return grp;
 			}
@@ -240,18 +234,13 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 		};
 		
-		return new AbstractGroup<Class<?>, Member>(parent, name, clazz) {
+		return new AbstractGroup<Class<?>, Member>(parent, name, clazz, AnnotationUtils.getAnnotation(clazz)) {
 			public Object createContext(Object parent) {
 				return new InstVisitor().instantiate(this, parent);
 			}
 
 			public Object instantiateObject(Object parent) {
 				return adapter.instantiateObject(parent);
-			}
-
-			@Override
-			public boolean isDefault() {
-				return adapter.isDefault();
 			}
 
 			@Override
@@ -285,7 +274,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 	public static Option<Class<?>, Member> newOption(String name, Composite<Class<?>, Member> parent, Member member, final Converter<?> converter,
 			final OptionAdapter adapter) {
-		return new AbstractOption<Class<?>, Member>(parent, name, member) {
+		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.getAnnotation(member)) {
 			@Override
 			public Object apply(Object receive, String next, Executor executor) {
 				Object o = converter.convert(next, executor.getCommandLine());
@@ -300,7 +289,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 
 	public static Option<Class<?>, Member> newBooleanOption(String name, Composite<Class<?>, Member> parent, Member member, final OptionAdapter adapter) {
-		return new AbstractOption<Class<?>, Member>(parent, name, member) {
+		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.getAnnotation(member)) {
 			@Override
 			public int isValid(String str, int index) {
 				if(str.startsWith(NO_FLAG, index))
@@ -347,15 +336,10 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 	public Command<Class<?>, Member> newCommand(String name, Composite<Class<?>, Member> parent, Member member, Converter<?>[] converters,
 			final CommandAdapter adapter) {
-		return new AbstractCommand<Class<?>, Member>(name, parent, member) {
+		return new AbstractCommand<Class<?>, Member>(name, parent, member, AnnotationUtils.getAnnotation(member)) {
 			@Override
 			public Object apply(Object receive,  String next, Executor executor) {
 				return adapter.executeCommand(this, receive, executor, next);
-			}
-
-			@Override
-			public boolean isDefault() {
-				return adapter.isDefault();
 			}
 
 			@Override
@@ -375,14 +359,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 	
 	public Command<Class<?>, Member> newCommand(ConverterFactory loadFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
-		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(loadFactory, method.getParameterTypes(),
-				method.getParameterAnnotations());
+		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(loadFactory, method.getParameterTypes(), method.getParameterAnnotations());
 		return newCommand(name, parent, method, converters, new CommandAdapter() {
-			@Override
-			public boolean isDefault() {
-				return method.isAnnotationPresent(DEFAULT_CLASS);
-			}
-
 			@Override
 			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
 				;

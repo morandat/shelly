@@ -5,7 +5,7 @@ import fr.labri.shelly.impl.Visitor;
 
 public class PrintVisitor<C, M> extends Visitor<C, M> {
 	public void print(Group<C, M> grp) {
-		visit_commands(grp);
+		visit_actions(grp);
 	}
 
 	public void visit(Composite<C, M> g) {
