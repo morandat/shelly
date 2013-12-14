@@ -16,19 +16,21 @@ import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
 
 public class Executor {
-	PeekIterator<String> _cmdline;
+	final PeekIterator<String> _cmdline;
+	final Parser _parser;
 
-	public Executor(PeekIterator<String> cmdline) {
+	public Executor(Parser parser, PeekIterator<String> cmdline) {
+		_parser = parser;
 		_cmdline = cmdline;
 	}
 
-	public static void execute(Group<Class<?>, Member> start, final PeekIterator<String> cmdline) {
-		Executor executor = new Executor(cmdline); // TODO a method
+	public static void execute(Parser parser, Group<Class<?>, Member> start, final PeekIterator<String> cmdline) {
+		Executor executor = new Executor(parser, cmdline); // TODO a method
 		Object ctx = executor.fillOptions(start, start.newGroup(null));
 		Action<Class<?>, Member> cmd = start;
 		Action<Class<?>, Member> last = cmd;
 
-		while ((cmd = Shell.findAction(last = cmd, executor._cmdline.peek())) != null)
+		while ((cmd = Shell.findAction(last = cmd, parser, executor.peek())) != null)
 			ctx = executor.executeCommand(executor._cmdline.next(), cmd, ctx);
 		if (last instanceof Group)
 			executor.executeDefault((Group<Class<?>, Member>) last, ctx);
@@ -71,7 +73,7 @@ public class Executor {
 	private Object executeCommand(String txt, Action<Class<?>, Member> cmd, Object parent) {
 		parent = cmd.createContext(parent);
 		parent = fillOptions(cmd, parent);
-		cmd.apply(parent, txt, _cmdline);
+		cmd.apply(parent, txt, this);
 		return parent;
 	}
 
@@ -91,7 +93,7 @@ public class Executor {
 		}
 
 		public void visit(Option<Class<?>, Member> opt) {
-			if (opt.isValid(_cmdline.peek())) {
+			if (_parser.isValid(_cmdline.peek(), opt)) {
 				throw new FoundOption(opt);
 			}
 		}
@@ -114,9 +116,21 @@ public class Executor {
 				return false;
 			} catch (FoundOption e) {
 				if(e.opt == null) return false;
-				e.opt.apply(receive, _cmdline.next(), _cmdline);
+				e.opt.apply(receive, _cmdline.next(), Executor.this);
 				return true;
 			}
 		}
+	}
+
+	public PeekIterator<String> getCommandLine() {
+		return _cmdline;
+	}
+
+	public Parser getParser() {
+		return _parser;
+	}
+
+	public String peek() {
+		return _cmdline.peek();
 	}
 }

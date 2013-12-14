@@ -11,10 +11,6 @@ public abstract class AbstractCommand<C, M> extends AbstractTerminal<C, M> imple
 		super(name, parent, item);
 	}
 
-	public boolean isValid(String str) {
-		return _id.equals(str);
-	}
-
 	@Override
 	public void startVisit(Visitor<C, M> visitor) {
 		visitor.visit(this);

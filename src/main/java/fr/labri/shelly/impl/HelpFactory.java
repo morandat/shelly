@@ -45,7 +45,7 @@ public class HelpFactory {
 	}
 
 	public interface HelpNavigator {
-		public abstract <C, M> Triggerable<C, M> printHelp(Composite<C, M> context, String[] cmds);
+		public abstract <C, M> Triggerable<C, M> findTopic(Composite<C, M> context, Parser parser, String[] cmds);
 	}
 
 	public interface HelpRenderer {
@@ -75,17 +75,16 @@ public class HelpFactory {
 
 	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, final boolean defaultcmd, ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
-		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class);
+		final Converter<?>[] converters = (Converter<?>[]) fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class);
 		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, null /*FIXME*/, converters, getHelpCommandAdapter(converters, defaultcmd, navigator, formater, renderer));
 	}
 
 	private static CommandAdapter getHelpCommandAdapter(final Converter<?>[] converters, final boolean isDefault, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
 		return new CommandAdapter() {
 			@Override
-			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, String next, PeekIterator<String> cmdline) {
-				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(converters, next, cmdline)[0]; // FIXME
-																																	// not
-				Triggerable<Class<?>, Member> item = navigator.printHelp(Shell.find_group(cmd), args);
+			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, Executor executor, String next) {
+				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(converters, next, executor.getCommandLine())[0]; // FIXME [0]
+				Triggerable<Class<?>, Member> item = navigator.findTopic(Shell.find_group(cmd), executor.getParser(), args); // FIXME
 				printHelp(item, System.err, formater, renderer);
 				return null;
 			}
@@ -214,13 +213,13 @@ public class HelpFactory {
 
 	public static final HelpNavigator NAVIGATOR = new HelpNavigator() {
 		@Override
-		public <C,M> Triggerable<C, M> printHelp(Composite<C, M> context, String[] cmds) {
+		public <C,M> Triggerable<C, M> findTopic(Composite<C, M> context, Parser parser, String[] cmds) {
 			if (cmds.length == 0) {
 				return Shell.find_group(context);
 			} else {
 				Action<C, M> parent = Shell.find_group(context);
 				for (int i = 0; i < cmds.length; i++) {
-					Action<C, M> cmd = Shell.findAction(parent, cmds[i]);
+					Action<C, M> cmd = Shell.findAction(parent, null, cmds[i]);
 					if (cmd == null) {
 						System.out.println("No topic " + cmds[i]);
 						break;

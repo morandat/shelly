@@ -18,21 +18,4 @@ public abstract class AbstractOption<C, M>  extends AbstractTerminal<C, M> imple
 	public void accept(Visitor<C, M> visitor) {
 		visitor.visit(this);
 	}
-
-	@Override
-	public boolean isValid(String str) {
-		boolean v = endsWith(str, _id, startWith(str, "--"));
-		return v;
-	}
-
-	static public int startWith(String str, String prefix) {
-		return startWith(str, prefix, 0);
-	}
-	
-	static public int startWith(String str, String prefix, int offset) {
-		return str.startsWith(prefix, offset) ? prefix.length() : 0;
-	}
-	static public boolean endsWith(String str, String suffix, int offset) {
-		return (offset + suffix.length() == str.length()) ? str.endsWith(suffix) : false;
-	}
 }

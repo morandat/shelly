@@ -9,6 +9,7 @@ import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.impl.ConverterFactory.SimpleConverter;
 import fr.labri.shelly.impl.HelpFactory;
+import fr.labri.shelly.impl.ParserFactory;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Shell;
 
@@ -37,7 +38,7 @@ public class SimpleProject {
 		} else {
 			fr.labri.shelly.Action<Class<?>, Member> parent = shell.getRoot();
 			for (int i = 0; i < cmds.length; i++) {
-				fr.labri.shelly.Action<Class<?>, Member> cmd = Shell.findAction(parent, cmds[i]);
+				fr.labri.shelly.Action<Class<?>, Member> cmd = Shell.findAction(parent, ParserFactory.GNUNonStrict, cmds[i]);
 				if (cmd == null) {
 					System.out.println("No topic " + cmds[i]);
 					break;
@@ -52,7 +53,7 @@ public class SimpleProject {
 	@Command(summary = "short way to go")
 	@Description("A more long way to go !")
 	public void newoldhelp(String[] cmds) {
-		HelpFactory.NAVIGATOR.printHelp(Shell.createShell(SimpleProject.class).getRoot(), cmds);
+		HelpFactory.NAVIGATOR.findTopic(Shell.createShell(SimpleProject.class).getRoot(), ParserFactory.GNUNonStrict, cmds);
 	}
 	
 	@Command(factory=HelpFactory.CommandFactory.class)

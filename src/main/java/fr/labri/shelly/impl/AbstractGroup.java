@@ -20,14 +20,18 @@ public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implem
 		visitor.visit(this);
 	}
 	
-
+	@Override
+	public int isValid(String str, int index) {
+		return AbstractTerminal.startWith(str, _id, index);
+	}
+	
 	@Override
 	public Object createContext(Object parent) {
 		return null;
 	}
 
 	@Override
-	public Object apply(Object receive, String string, PeekIterator<String> _cmdline) {
+	public Object apply(Object receive, String string, Executor executor) {
 		return null;
 	}
 }

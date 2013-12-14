@@ -109,14 +109,14 @@ public class ConverterFactory {
 		}
 	}
 
-	static class ArrayConverter implements Converter<Object> {
-		final Converter<? extends Object> _converter;
+	static class ArrayConverter implements Converter<Object[]> {
+		final Converter<?> _converter;
 
 		public ArrayConverter(Converter<?> converter) {
 			_converter = converter;
 		}
 
-		final public Object convert(String cmd, PeekIterator<String> cmdLine) {
+		final public Object[] convert(String cmd, PeekIterator<String> cmdLine) {
 			ArrayList<Object> lst = new ArrayList<>();
 			while (cmdLine.hasNext())
 				lst.add(_converter.convert(cmd, cmdLine));
@@ -124,7 +124,7 @@ public class ConverterFactory {
 		}
 
 		@Override
-		public Class<?> convertedType() {
+		public Class<Array> convertedType() {
 			return Array.class;
 		}
 	};

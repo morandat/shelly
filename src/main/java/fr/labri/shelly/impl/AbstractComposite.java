@@ -53,11 +53,6 @@ public abstract class AbstractComposite<C, M> implements Composite<C, M> {
 	}
 
 	@Override
-	public boolean isValid(String str) {
-		return getID().equals(str);
-	}
-
-	@Override
 	public C getAssociatedElement() {
 		return _clazz;
 	}

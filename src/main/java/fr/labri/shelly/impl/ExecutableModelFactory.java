@@ -22,6 +22,7 @@ import fr.labri.shelly.annotations.AnnotationUtils.ReflectValue;
 
 public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
+	public static final String NO_FLAG = "no-";
 	public static final ExecutableModelFactory EXECUTABLE_MODEL = new ExecutableModelFactory();
 
 	static public class Executable extends ModelBuilder<Class<?>, Member> {
@@ -117,7 +118,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 	
 	public interface CommandAdapter extends ActionAdapter {
-		public abstract Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, String text, PeekIterator<String> cmdLine);
+		public abstract Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text);
 	}
 	
 	public interface ActionAdapter extends TriggerableAdapter {
@@ -187,14 +188,14 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			super(clazz);
 		}
 		
-		public abstract Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, String text, PeekIterator<String> cmdLine);
+		public abstract Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text);
 
 		@Override
 		public Object newGroup(Object parent) {
 			return ExecutableModelFactory.newGroup(_superThis != null, _ctor, parent);
 		}
 		
-		public Object apply(AbstractGroup<Class<?>, Member> abstractGroup, Object receive, PeekIterator<String> _cmdline) {
+		public Object apply(AbstractGroup<Class<?>, Member> abstractGroup, Object receive, Executor executor) {
 			return receive;
 		}
 		abstract public boolean isDefault();
@@ -229,7 +230,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 
 			@Override
-			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, String text, PeekIterator<String> cmdLine) {
+			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
 				return grp;
 			}
 
@@ -254,8 +255,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 
 			@Override
-			public Object apply(Object receive, String next, PeekIterator<String> _cmdline) {
-				return adapter.apply(this, receive, _cmdline);
+			public Object apply(Object receive, String next, Executor executor) {
+				return adapter.apply(this, receive, executor);
 			}
 
 			@Override
@@ -286,8 +287,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			final OptionAdapter adapter) {
 		return new AbstractOption<Class<?>, Member>(parent, name, member) {
 			@Override
-			public Object apply(Object receive, String next, PeekIterator<String> cmdline) {
-				Object o = converter.convert(next, cmdline);
+			public Object apply(Object receive, String next, Executor executor) {
+				Object o = converter.convert(next, executor.getCommandLine());
 				return adapter.setOption(this, receive, o);
 			}
 
@@ -301,14 +302,15 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	public static Option<Class<?>, Member> newBooleanOption(String name, Composite<Class<?>, Member> parent, Member member, final OptionAdapter adapter) {
 		return new AbstractOption<Class<?>, Member>(parent, name, member) {
 			@Override
-			public boolean isValid(String str) {
-				int i = startWith(str, "--");
-				return (i > 0) && endsWith(str, _id, i + startWith(str, "no-", i));
+			public int isValid(String str, int index) {
+				if(str.startsWith(NO_FLAG, index))
+					index += NO_FLAG.length();
+				return str.startsWith(_id, index) ? index + _id.length() : -1;
 			}
 
 			@Override
-			public Object apply(Object receive, String next, PeekIterator<String> _cmdline) {
-				return adapter.setOption(this, receive, !_cmdline.peek().startsWith("--no-"));
+			public Object apply(Object receive, String next, Executor executor) {
+				return adapter.setOption(this, receive, !executor.peek().startsWith("--no-"));
 			}
 
 			@Override
@@ -347,8 +349,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			final CommandAdapter adapter) {
 		return new AbstractCommand<Class<?>, Member>(name, parent, member) {
 			@Override
-			public Object apply(Object receive,  String next, PeekIterator<String> cmdline) {
-				return adapter.executeCommand(this, receive, cmdline.peek(), cmdline);
+			public Object apply(Object receive,  String next, Executor executor) {
+				return adapter.executeCommand(this, receive, executor, next);
 			}
 
 			@Override
@@ -382,9 +384,10 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 
 			@Override
-			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, String text, PeekIterator<String> cmdLine) {
+			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
+				;
 				try {
-					return method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(converters, text, cmdLine));
+					return method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(converters, text, executor.getCommandLine()));
 				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 					throw new RuntimeException(e);
 				}

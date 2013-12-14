@@ -20,6 +20,11 @@ public abstract class AbstractTerminal<C, M> implements Terminal<C, M> {
 		}
 
 		@Override
+		public int isValid(String str, int index) {
+			return startWith(str, _id, index);
+		}
+		
+		@Override
 		public M getAssociatedElement() {
 			return _element;
 		}
@@ -33,8 +38,16 @@ public abstract class AbstractTerminal<C, M> implements Terminal<C, M> {
 			return _parent;
 		}
 		
+		static public int startWith(String str, String prefix, int offset) {
+			return str.startsWith(prefix, offset) ? prefix.length() : -1;
+		}
+		
+		static public boolean endsWith(String str, String suffix, int offset) {
+			return (offset + suffix.length() == str.length()) ? str.endsWith(suffix) : false;
+		}
+		
 		@Override
-		public Object apply(Object receive, String string, PeekIterator<String> _cmdline) {
+		public Object apply(Object receive, String string, Executor executor) {
 			return null;
 		}
 

@@ -11,6 +11,8 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import fr.labri.shelly.impl.ExecutableModelFactory;
+import fr.labri.shelly.impl.Parser;
+import fr.labri.shelly.impl.ParserFactory;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelBuilder;
 import fr.labri.shelly.impl.Executor;
@@ -63,21 +65,26 @@ public class Shell {
 		HelpFactory.printHelp(getRoot(), out);
 	}
 
+
 	final public void parseCommandLine(String[] cmds) {
-		parseCommandLine(Arrays.asList(cmds));
+		parseCommandLine(cmds, ParserFactory.Java);
+	}
+	
+	final public void parseCommandLine(String[] cmds, Parser parser) {
+		parseCommandLine(Arrays.asList(cmds), parser);
 	}
 
-	final public void parseCommandLine(Collection<String> cmds) {
-		parse(cmds.iterator());
+	final public void parseCommandLine(Collection<String> cmds, Parser parser) {
+		parse(cmds.iterator(), parser);
 	}
 
-	final public void parse(Iterator<String> cmdLine) {
-		Executor.execute(grp, new PeekIterator<>(cmdLine));
+	final public void parse(Iterator<String> cmdLine, Parser parser) {
+		Executor.execute(parser, grp, new PeekIterator<>(cmdLine));
 	}
 
-	public void loop(InputStream inputStream) throws Exception {
+	public void loop(InputStream inputStream, Parser model) throws Exception {
 		final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
-		loop(inputStream, new ShellAdapter() {
+		loop(inputStream, model, new ShellAdapter() {
 			String prompt = String.format("%s> ", grp.getID());
 
 			@Override
@@ -102,7 +109,7 @@ public class Shell {
 		});
 	}
 
-	public void loop(InputStream in, ShellAdapter adapter) throws Exception {
+	public void loop(InputStream in, Parser model, ShellAdapter adapter) throws Exception {
 		String line;
 		do {
 			System.out.println(adapter.prompt());
@@ -111,7 +118,7 @@ public class Shell {
 			if (line != null)
 				try {
 					// Object result =
-					parseCommandLine(line.split(" "));
+					parseCommandLine(line.split(" "), model);
 					// adapter.printResult(result);
 				} catch (RuntimeException e) {
 					adapter.catchBlock(e);
@@ -121,28 +128,28 @@ public class Shell {
 		} while (line != null);
 	}
 
-	public Action<Class<?>, Member> find_command(final String cmd) {
-		return find_command(grp, cmd);
+	public Action<Class<?>, Member> find_command(Parser parser, String cmd) {
+		return find_command(getRoot(), parser, cmd);
 	}
 
-	public Option<Class<?>, Member> find_option(final String cmd) {
-		return find_option(grp, cmd);
+	public Option<Class<?>, Member> find_option(Parser parser, String cmd) {
+		return find_option(getRoot(), parser, cmd);
 	}
 
-	public static <C, M> Action<C, M> findAction(Action<C, M> start, final String cmd) {
+	public static <C, M> Action<C, M> findAction(Action<C, M> start, Parser parser, final String cmd) {
 		if (start instanceof Group) {
-			return find_command((Group<C, M>) start, cmd);
+			return find_command((Group<C, M>) start, parser, cmd);
 		}
 		return null;
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <C,M> Action<C, M> find_command(Group<C, M> start, final String cmd) {
+	public static <C,M> Action<C, M> find_command(Group<C, M> start, final Parser parser, final String cmd) {
 		try {
 			Visitor<C, M> v = new Visitor.CommandVisitor<C, M>() {
 				@Override
 				public void visit(Action<C, M> grp) {
-					if (grp.isValid(cmd)) {
+					if (parser.isValid(cmd, grp)) {
 						throw new Visitor.FoundCommand(grp);
 					}
 				}
@@ -174,12 +181,12 @@ public class Shell {
 	}
 	
 	@SuppressWarnings("unchecked")
-	static public <C,M> Option<C, M> find_option(Action<C, M> start, final String cmd) {
+	static public <C,M> Option<C, M> find_option(Action<C, M> start, final Parser parser, final String cmd) {
 		try {
 			if (start instanceof Group) {
 				Visitor<C, M> v = new OptionVisitor<C, M>() {
 					public void visit(Option<C, M> option) {
-						if (option.getID().equals(cmd))
+						if (parser.isValid(cmd, option))
 							throw new FoundOption(option);
 					};
 				};
