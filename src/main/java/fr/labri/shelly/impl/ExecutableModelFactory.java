@@ -53,18 +53,18 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 				
 				for (Field f : clazz.getFields())
 					if (f.isAnnotationPresent(OPT_CLASS))
-						grp.addItem(createOption(grp.getAnnotation(OPT_CLASS), f, grp));
+						grp.addItem(createOption(f.getAnnotation(OPT_CLASS), f, grp));
 				for (Method m : clazz.getMethods())
 					if (m.isAnnotationPresent(CMD_CLASS))
-						grp.addItem(createCommand(grp.getAnnotation(CMD_CLASS), m, grp));
+						grp.addItem(createCommand(m.getAnnotation(CMD_CLASS), m, grp));
 					else if (m.isAnnotationPresent(OPT_CLASS))
-							grp.addItem(createOption(grp.getAnnotation(OPT_CLASS), m, grp));
+							grp.addItem(createOption(m.getAnnotation(OPT_CLASS), m, grp));
 
 				for (Class<?> c : clazz.getClasses())
 					if (c.isAnnotationPresent(GROUP_CLASS))
-						grp.addItem(createGroup(grp, grp.getAnnotation(GROUP_CLASS), c));
+						grp.addItem(createGroup(grp, c.getAnnotation(GROUP_CLASS), c));
 					else if (c.isAnnotationPresent(CONTEXT_CLASS))
-						grp.addItem(createContext(grp, grp.getAnnotation(CONTEXT_CLASS), c));
+						grp.addItem(createContext(grp, c.getAnnotation(CONTEXT_CLASS), c));
 			}
 			
 			protected ExecutableModelFactory getFactory(Class<? extends ExecutableModelFactory> factory) {
@@ -119,7 +119,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 	
 	public interface CommandAdapter extends ActionAdapter {
-		public abstract Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text);
+		public abstract void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text);
 	}
 	
 	public interface ActionAdapter extends TriggerableAdapter {
@@ -244,8 +244,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 
 			@Override
-			public Object apply(Object receive, String next, Executor executor) {
-				return adapter.apply(this, receive, executor);
+			public void executeAction(Object receive, String next, Executor executor) {
+				adapter.apply(this, receive, executor);
 			}
 
 			@Override
@@ -276,9 +276,9 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			final OptionAdapter adapter) {
 		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.getAnnotation(member)) {
 			@Override
-			public Object apply(Object receive, String next, Executor executor) {
+			public void executeAction(Object receive, String next, Executor executor) {
 				Object o = converter.convert(next, executor.getCommandLine());
-				return adapter.setOption(this, receive, o);
+				adapter.setOption(this, receive, o);
 			}
 
 			@Override
@@ -298,8 +298,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 
 			@Override
-			public Object apply(Object receive, String next, Executor executor) {
-				return adapter.setOption(this, receive, !executor.peek().startsWith("--no-"));
+			public void executeAction(Object receive, String next, Executor executor) {
+				adapter.setOption(this, receive, !executor.peek().startsWith("--no-"));
 			}
 
 			@Override
@@ -338,8 +338,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			final CommandAdapter adapter) {
 		return new AbstractCommand<Class<?>, Member>(name, parent, member, AnnotationUtils.getAnnotation(member)) {
 			@Override
-			public Object apply(Object receive,  String next, Executor executor) {
-				return adapter.executeCommand(this, receive, executor, next);
+			public void executeAction(Object receive,  String next, Executor executor) {
+				adapter.executeCommand(this, receive, executor, next);
 			}
 
 			@Override
@@ -362,10 +362,10 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(loadFactory, method.getParameterTypes(), method.getParameterAnnotations());
 		return newCommand(name, parent, method, converters, new CommandAdapter() {
 			@Override
-			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
+			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
 				;
 				try {
-					return method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(converters, text, executor.getCommandLine()));
+					method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(converters, text, executor.getCommandLine()));
 				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 					throw new RuntimeException(e);
 				}

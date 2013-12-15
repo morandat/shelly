@@ -11,7 +11,7 @@ public class ParserFactory {
 		String longOptionPrefix = "--";
 		String shortOptionPrefix = "";
 		@Override
-		public boolean stopParsing(String cmd) {
+		public boolean stopOptionParsing(String cmd) {
 			return optionStopper.equals(cmd);
 		}
 		@Override
@@ -24,21 +24,25 @@ public class ParserFactory {
 			return action.isValid(cmd, 0) >= 0;
 		}
 		
+		@Override
+		public boolean strictOptions() {
+			return stictOptions;
+		}
 	}
 	public static final Parser GNUNonStrict = new AbstractExecutorModel() {
 	};
 	public static final Parser GNUStrict = new AbstractExecutorModel() {
+		// TODO maybe rename BSD
 		{
 			stictOptions = true;
 		}
-		// TODO maybe rename BSD
 	};
 	public static Parser Java = new AbstractExecutorModel() {
 		{
 			longOptionPrefix = "-";
 			shortOptionPrefix = null;
+			stictOptions = true;
 		}
-//			strictOption	
 	};
 	
 }

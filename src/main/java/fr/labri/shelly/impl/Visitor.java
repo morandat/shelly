@@ -36,13 +36,17 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 		comp.startVisit(option_visitor);
 	}
 	public void visit_actions(Composite<C, M> comp) {
-		Visitor<C, M> option_visitor = new Visitor<C, M>() {
+		Visitor<C, M> action_visitor = new Visitor<C, M>() {
 			@Override
 			public void visit(Action<C, M> option) {
 				Visitor.this.visit(option);
 			}
 			@Override
 			public void visit(Group<C, M> cmp) {
+				visit((Action<C, M>) cmp);
+			}
+			@Override
+			public void visit(Command<C, M> cmp) {
 				visit((Action<C, M>) cmp);
 			}
 			@Override
@@ -54,7 +58,7 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 				cmp.visit_all(this);
 			}
 		};
-		comp.visit_all(option_visitor);
+		comp.visit_all(action_visitor);
 	}
 	@Override
 	public void visit(Option<C, M> option) {
@@ -145,8 +149,11 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 			visit((Action<C, M>)cmd);
 		}
 		
+		public void startVisit(Command<C, M> cmdGroup) {
+		}
+		
 		public void startVisit(Group<C, M> cmdGroup) {
-			cmdGroup.visit_all(this);
+			visit_actions(cmdGroup);
 		}
 	}
 	

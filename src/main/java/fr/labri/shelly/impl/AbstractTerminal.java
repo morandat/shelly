@@ -31,8 +31,7 @@ public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implemen
 		}
 		
 		@Override
-		public Object apply(Object receive, String string, Executor executor) {
-			return null;
+		public void executeAction(Object receive, String string, Executor executor) {
 		}
 
 }

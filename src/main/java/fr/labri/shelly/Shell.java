@@ -61,9 +61,12 @@ public class Shell {
 	final public void parseCommandLine(Collection<String> cmds, Parser parser) {
 		parse(cmds.iterator(), parser);
 	}
-
+	
+	final public void parse(Iterator<String> cmdLine, Executor executor) {
+		executor.execute(new PeekIterator<>(cmdLine), getRoot());
+	}
 	final public void parse(Iterator<String> cmdLine, Parser parser) {
-		Executor.execute(parser, grp, new PeekIterator<>(cmdLine));
+		parse(cmdLine, new Executor(parser));
 	}
 
 	public void loop(InputStream inputStream, Parser model) throws Exception {
@@ -90,19 +93,26 @@ public class Shell {
 			@Override
 			public void printResult(Object result) throws IOException {
 			}
+
+			@Override
+			public Iterator<String> parseLine(String line) {
+				Iterator<String> a = Arrays.asList(line.split("\\s")).iterator();
+				return a;
+			}
+
 		});
 	}
 
 	public void loop(InputStream in, Parser model, ShellAdapter adapter) throws Exception {
 		String line;
 		do {
-			System.out.println(adapter.prompt());
+			System.out.print(adapter.prompt());
 			System.out.flush();
 			line = adapter.readLine();
 			if (line != null)
 				try {
 					// Object result =
-					parseCommandLine(line.split(" "), model);
+					parse(adapter.parseLine(line), model);
 					// adapter.printResult(result);
 				} catch (RuntimeException e) {
 					adapter.catchBlock(e);
@@ -138,7 +148,7 @@ public class Shell {
 					}
 				}
 			};
-			v.visit_actions(start);
+			start.startVisit(v);
 		} catch (Visitor.FoundCommand e) {
 			return (Action<C, M>) e.cmd;
 		}
@@ -184,6 +194,7 @@ public class Shell {
 
 	interface ShellAdapter {
 		String prompt();
+		Iterator<String> parseLine(String line);
 		void catchBlock(Exception e) throws Exception;
 		String readLine() throws IOException;
 		void printResult(Object result) throws IOException;

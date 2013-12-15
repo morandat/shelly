@@ -16,6 +16,7 @@ import fr.labri.shelly.Option;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Triggerable;
+import fr.labri.shelly.annotations.Ignore.ExecutorMode;
 import fr.labri.shelly.impl.ExecutableModelFactory.CommandAdapter;
 
 public class HelpFactory {
@@ -81,11 +82,10 @@ public class HelpFactory {
 	private static CommandAdapter getHelpCommandAdapter(final Converter<?>[] converters, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
 		return new CommandAdapter() {
 			@Override
-			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, Executor executor, String next) {
+			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, Executor executor, String next) {
 				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(converters, next, executor.getCommandLine())[0]; // FIXME [0]
 				Triggerable<Class<?>, Member> item = navigator.findTopic(Shell.find_group(cmd), executor.getParser(), args); // FIXME
 				printHelp(item, System.err, formater, renderer);
-				return null;
 			}
 
 			@Override
@@ -151,6 +151,7 @@ public class HelpFactory {
 					help.addTitle("Options");
 					new OptionVisitor<C, M>() {
 						public void visit(Option<C, M> option) {
+							if(ExecutorMode.HELP.isIgnored(option));
 							help.addShortHelp(option);
 						}
 					}.startVisit(grp);
@@ -169,6 +170,7 @@ public class HelpFactory {
 					help.addTitle("Option");
 					new OptionVisitor<C, M>() {
 						public void visit(Option<C, M> option) {
+							if(ExecutorMode.HELP.isIgnored(option));
 							help.addShortHelp(option);
 						}
 					}.visit_options(cmd);

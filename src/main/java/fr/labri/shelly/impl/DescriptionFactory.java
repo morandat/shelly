@@ -16,6 +16,7 @@ import fr.labri.shelly.Action;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.annotations.AnnotationUtils;
+import fr.labri.shelly.annotations.Ignore.ExecutorMode;
 import fr.labri.shelly.annotations.Option;
 import fr.labri.shelly.annotations.Param;
 import fr.labri.shelly.impl.Visitor.ActionVisitor;
@@ -182,7 +183,8 @@ public class DescriptionFactory {
 		final ArrayList<String[]> list = new ArrayList<String[]>();
 		new ActionVisitor<C, M>() {
 			public void visit(Action<C, M> cmd) {
-				list.add(new String[]{cmd.getID(), cmd.getDescription().getShortDescription()});
+				if(!ExecutorMode.HELP.isIgnored(cmd))
+					list.add(new String[]{cmd.getID(), cmd.getDescription().getShortDescription()});
 			}
 		}.startVisit(grp);
 		final String[][] res = new String[list.size()][]; 

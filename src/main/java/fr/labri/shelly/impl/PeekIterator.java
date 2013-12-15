@@ -30,7 +30,9 @@ public class PeekIterator<T> implements Iterator<T> {
 	public T next() {
 		if(_eof) {
 			_eof = false;
-			return _lookahead;
+			T l = _lookahead;
+			_lookahead = null;
+			return l;
 		}
 		T val = _lookahead;
 		_lookahead = _backing.next();

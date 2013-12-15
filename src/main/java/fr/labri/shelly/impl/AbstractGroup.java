@@ -19,7 +19,7 @@ public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implem
 
 	@Override
 	public void startVisit(Visitor<C, M> visitor) {
-		visitor.visit(this);
+		visitor.startVisit(this);
 	}
 	
 	@Override
@@ -33,8 +33,7 @@ public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implem
 	}
 
 	@Override
-	public Object apply(Object receive, String string, Executor executor) {
-		return null;
+	public void executeAction(Object receive, String string, Executor executor) {
 	}
 	
 	@Override

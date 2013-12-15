@@ -5,7 +5,8 @@ import fr.labri.shelly.Option;
 
 public interface Parser {
 
-	boolean stopParsing(String cmd);
+	boolean strictOptions();
+	boolean stopOptionParsing(String cmd);
 	boolean isValid(String cmd, Option<?, ?> option);
 	boolean isValid(String cmd, Action<?, ?> option);
 

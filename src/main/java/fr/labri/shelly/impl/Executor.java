@@ -8,43 +8,51 @@ import java.util.ArrayList;
 import fr.labri.shelly.Action;
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
-import fr.labri.shelly.Context;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
-import fr.labri.shelly.Shell;
 import fr.labri.shelly.Item;
-import fr.labri.shelly.Visitor;
 import fr.labri.shelly.annotations.Default;
 import fr.labri.shelly.annotations.Error;
+import fr.labri.shelly.annotations.Ignore.ExecutorMode;
 import fr.labri.shelly.impl.Visitor.ActionVisitor;
 import fr.labri.shelly.impl.Visitor.FoundCommand;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
 
 public class Executor {
-	final PeekIterator<String> _cmdline;
+	PeekIterator<String> _cmdline;
 	final Parser _parser;
+	final ExecutorMode _mode = ExecutorMode.BATCH;
 
-	public Executor(Parser parser, PeekIterator<String> cmdline) {
+	public Executor(Parser parser) {
 		_parser = parser;
-		_cmdline = cmdline;
 	}
-
-	public static void execute(Parser parser, Group<Class<?>, Member> start, final PeekIterator<String> cmdline) {
-		Executor executor = new Executor(parser, cmdline); // TODO a method
-		Object ctx = executor.fillOptions(start, start.instantiateObject(null));
+	
+	public void execute(PeekIterator<String> cmdline, Group<Class<?>, Member> start){
+		execute(cmdline, start, null);
+	}
+	
+	public void execute(PeekIterator<String> cmdline, Group<Class<?>, Member> start, Object parent){
+		_cmdline = cmdline;
 		Action<Class<?>, Member> cmd = start;
 		Action<Class<?>, Member> last = cmd;
-
-		while ((cmd = Shell.findAction(last = cmd, parser, executor.peek())) != null)
-			ctx = executor.executeCommand(executor._cmdline.next(), cmd, ctx);
-		if (last instanceof Group)
-			executor.executeDefault((Group<Class<?>, Member>) last, ctx);
+		
+		Object ctx = fillOptions(start, start.instantiateObject(parent));
+		while (_cmdline.hasNext())
+			if ((cmd = findAction(last = cmd, _parser, peek())) != null)
+				ctx = executeAction(_cmdline.next(),last = cmd, ctx);
+		
+		finalize(last, ctx);
 	}
 
+	protected void finalize(Action<Class<?>, Member> last, Object ctx) {
+		if (last instanceof Group)
+			executeDefault((Group<Class<?>, Member>) last, ctx);
+	}
+	
 	public void executeDefault(Group<Class<?>, Member> subCmd, Object parent) {
 		Action<Class<?>, Member> dflt = getDefault(subCmd);
 		if (dflt != null)
-			executeCommand(null, dflt, parent);
+			executeAction(null, dflt, parent);
 		else
 			error(subCmd, parent);
 	}
@@ -89,18 +97,39 @@ public class Executor {
 		}
 	}
 
-	public Object executeCommand(String txt, Action<Class<?>, Member> cmd, Object parent) {
+	public Object executeAction(String txt, Action<Class<?>, Member> cmd, Object parent) {
 		parent = cmd.createContext(parent);
 		parent = fillOptions(cmd, parent);
-		cmd.apply(parent, txt, this);
+		cmd.executeAction(parent, txt, this);
 		return parent;
 	}
 
 	private Object fillOptions(Action<Class<?>, Member> subCmd, Object parent) {
 		OptionParserVisitor visitor = new OptionParserVisitor();
-		while (visitor.setOption(subCmd, parent))
+		if(_parser.stopOptionParsing(_cmdline.peek()))
+			_cmdline.next();
+		else while (visitor.setOption(subCmd, parent))
 			;
 		return parent;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public Action<Class<?>, Member> findAction(Action<Class<?>, Member> action, final Parser parser, final String cmd) {
+		try {
+			Visitor<Class<?>, Member> v = new Visitor.ActionVisitor<Class<?>, Member>() {
+				@Override
+				public void visit(Action<Class<?>, Member> grp) {
+					if (!_mode.isIgnored(grp))
+						if (parser.isValid(cmd, grp)) {
+							throw new Visitor.FoundCommand(grp);
+						}
+				}
+			};
+			action.startVisit(v);
+		} catch (Visitor.FoundCommand e) {
+			return (Action<Class<?>, Member>) e.cmd;
+		}
+		return null;
 	}
 
 	class OptionParserVisitor extends OptionVisitor<Class<?>, Member> {
@@ -112,13 +141,20 @@ public class Executor {
 		}
 
 		public void visit(Option<Class<?>, Member> opt) {
-			if (_parser.isValid(_cmdline.peek(), opt)) {
-				throw new FoundOption(opt);
-			}
+			if (!_mode.isIgnored(opt))
+				if (_parser.isValid(_cmdline.peek(), opt)) {
+					throw new FoundOption(opt);
+				}
 		}
 
 		@Override
-		public void visit(Context<Class<?>, Member> grp) {
+		public void visit(Group<Class<?>, Member> grp) {
+			if(_parser.strictOptions())
+				visit((Composite<Class<?>, Member>) grp);
+		}
+
+		@Override
+		public void visit(Composite<Class<?>, Member> grp) {
 			visit_options(grp);
 
 			Composite<Class<?>, Member> p = grp.getParent();
@@ -136,12 +172,12 @@ public class Executor {
 			} catch (FoundOption e) {
 				if (e.opt == null)
 					return false;
-				e.opt.apply(receive, _cmdline.next(), Executor.this);
+				e.opt.executeAction(receive, _cmdline.next(), Executor.this);
 				return true;
 			}
 		}
 	}
-
+	
 	public PeekIterator<String> getCommandLine() {
 		return _cmdline;
 	}
