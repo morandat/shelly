@@ -23,11 +23,6 @@ public abstract class AbstractCommand<C, M> extends AbstractTerminal<C, M> imple
 	}
 	
 	@Override
-	public Object createContext(Object parent) {
-		return null;
-	}
-	
-	@Override
 	public String toString() {
 		return "command " + getID();
 	}

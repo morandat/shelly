@@ -1,5 +1,6 @@
 package fr.labri.shelly.impl;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -7,7 +8,6 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import fr.labri.shelly.Action;
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Context;
@@ -18,14 +18,35 @@ import fr.labri.shelly.Group;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Triggerable;
-import fr.labri.shelly.annotations.AnnotationUtils;
-import fr.labri.shelly.annotations.AnnotationUtils.ReflectValue;
+import fr.labri.shelly.impl.AnnotationUtils.ReflectValue;
 
 public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
-	public static final String NO_FLAG = "no-";
 	public static final ExecutableModelFactory EXECUTABLE_MODEL = new ExecutableModelFactory();
 
+	public static class ReflectVisitor {
+		public void visit(AnnotatedElement o) {
+		}
+		public void visit(Class<?> c) {
+			visit((AnnotatedElement)c);
+		}
+		public void visit(Field c) {
+			visit((AnnotatedElement)c);
+		}
+		public void visit(Method c) {
+			visit((AnnotatedElement)c);
+		}
+		
+		void visit_all(Class<?> clazz) {
+			for (Field f : clazz.getFields())
+				visit(f);
+			for (Method m : clazz.getMethods())
+				visit(m);
+			for (Class<?> c : clazz.getClasses())
+				visit(c);	
+		}
+	}
+	
 	static public class Executable extends ModelBuilder<Class<?>, Member> {
 		@Override
 		public ExecutableBuilder newBuilder() {
@@ -48,23 +69,34 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 				_parentConverter = p;
 			}
 
-			protected void populate(Composite<Class<?>, Member> grp) {
+			@Override
+			protected void populate(final Composite<Class<?>, Member> grp) {
 				Class<?> clazz = grp.getAssociatedElement();
-				
-				for (Field f : clazz.getFields())
-					if (f.isAnnotationPresent(OPT_CLASS))
-						grp.addItem(createOption(f.getAnnotation(OPT_CLASS), f, grp));
-				for (Method m : clazz.getMethods())
-					if (m.isAnnotationPresent(CMD_CLASS))
-						grp.addItem(createCommand(m.getAnnotation(CMD_CLASS), m, grp));
-					else if (m.isAnnotationPresent(OPT_CLASS))
+				new ReflectVisitor() {
+					public void visit(Class<?> c) {
+						if (c.isAnnotationPresent(GROUP_CLASS)) {
+							grp.addItem(createGroup(grp, c.getAnnotation(GROUP_CLASS), c));
+						} else if (c.isAnnotationPresent(CONTEXT_CLASS)) {
+							grp.addItem(createContext(grp, c.getAnnotation(CONTEXT_CLASS), c));
+						}
+					}
+					
+					public void visit(Field f) {
+						if (f.isAnnotationPresent(OPT_CLASS)) {
+							grp.addItem(createOption(f.getAnnotation(OPT_CLASS), f, grp));
+						}
+					}
+					
+					public void visit(Method m) {
+						if (m.isAnnotationPresent(CMD_CLASS)) {
+							grp.addItem(createCommand(m.getAnnotation(CMD_CLASS), m, grp));
+						} else if (m.isAnnotationPresent(OPT_CLASS)) {
 							grp.addItem(createOption(m.getAnnotation(OPT_CLASS), m, grp));
+						}
+					}
 
-				for (Class<?> c : clazz.getClasses())
-					if (c.isAnnotationPresent(GROUP_CLASS))
-						grp.addItem(createGroup(grp, c.getAnnotation(GROUP_CLASS), c));
-					else if (c.isAnnotationPresent(CONTEXT_CLASS))
-						grp.addItem(createContext(grp, c.getAnnotation(CONTEXT_CLASS), c));
+
+				}.visit_all(clazz);
 			}
 			
 			protected ExecutableModelFactory getFactory(Class<? extends ExecutableModelFactory> factory) {
@@ -158,7 +190,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		}
 
 		public Object instantiateObject(Object parent) {
-			return ExecutableModelFactory.newGroup(_superThis != null, _ctor, parent);
+			return ExecutableModelFactory.newInstance(_superThis != null, _ctor, parent);
 		}
 
 		public Object getEnclosingObject(Object obj) {
@@ -192,7 +224,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 		@Override
 		public Object instantiateObject(Object parent) {
-			return ExecutableModelFactory.newGroup(_superThis != null, _ctor, parent);
+			return ExecutableModelFactory.newInstance(_superThis != null, _ctor, parent);
 		}
 		
 		public Object apply(AbstractGroup<Class<?>, Member> grp, Object receive, Executor executor) {
@@ -201,7 +233,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 
 	public Context<Class<?>, Member> newContext(String name, Composite<Class<?>, Member> parent, Class<?> clazz, final CompositeAdapter adapter) {
-		return new AbstractContext<Class<?>, Member>(parent, name, clazz, AnnotationUtils.getAnnotation(clazz)) {
+		return new AbstractContext<Class<?>, Member>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
 			@Override
 			public Object instantiateObject(Object parent) {
 				return adapter.instantiateObject(parent);
@@ -234,15 +266,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 		};
 		
-		return new AbstractGroup<Class<?>, Member>(parent, name, clazz, AnnotationUtils.getAnnotation(clazz)) {
-			public Object createContext(Object parent) {
-				return new InstVisitor().instantiate(this, parent);
-			}
-
-			public Object instantiateObject(Object parent) {
-				return adapter.instantiateObject(parent);
-			}
-
+		return new AbstractGroup<Class<?>, Member>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
 			@Override
 			public void executeAction(Object receive, String next, Executor executor) {
 				adapter.apply(this, receive, executor);
@@ -257,10 +281,15 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			public Description getDescription() {
 				return adapter.getDescription(this);
 			}
+
+			@Override
+			public Object instantiateObject(Object parent) {
+				return adapter.instantiateObject(parent);
+			}
 		};
 	}
 
-	static Object newGroup(boolean enclosed, Constructor<?> ctor, Object parent) {
+	static Object newInstance(boolean enclosed, Constructor<?> ctor, Object parent) {
 		try {
 			if (enclosed) {
 				return ctor.newInstance(parent);
@@ -274,7 +303,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 	public static Option<Class<?>, Member> newOption(String name, Composite<Class<?>, Member> parent, Member member, final Converter<?> converter,
 			final OptionAdapter adapter) {
-		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.getAnnotation(member)) {
+		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation(member)) {
 			@Override
 			public void executeAction(Object receive, String next, Executor executor) {
 				Object o = converter.convert(next, executor.getCommandLine());
@@ -289,17 +318,15 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 
 	public static Option<Class<?>, Member> newBooleanOption(String name, Composite<Class<?>, Member> parent, Member member, final OptionAdapter adapter) {
-		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.getAnnotation(member)) {
+		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation(member)) {
 			@Override
-			public int isValid(String str, int index) {
-				if(str.startsWith(NO_FLAG, index))
-					index += NO_FLAG.length();
-				return str.startsWith(_id, index) ? index + _id.length() : -1;
+			public int isValid(Parser parser, String str, int index) {
+				return parser.isLongBooleanOptionValid(str, this, index);
 			}
 
 			@Override
 			public void executeAction(Object receive, String next, Executor executor) {
-				adapter.setOption(this, receive, !executor.peek().startsWith("--no-"));
+				adapter.setOption(this, receive, !executor.getParser().getBooleanValue(next));
 			}
 
 			@Override
@@ -336,7 +363,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 	public Command<Class<?>, Member> newCommand(String name, Composite<Class<?>, Member> parent, Member member, Converter<?>[] converters,
 			final CommandAdapter adapter) {
-		return new AbstractCommand<Class<?>, Member>(name, parent, member, AnnotationUtils.getAnnotation(member)) {
+		return new AbstractCommand<Class<?>, Member>(name, parent, member, AnnotationUtils.extractAnnotation(member)) {
 			@Override
 			public void executeAction(Object receive,  String next, Executor executor) {
 				adapter.executeCommand(this, receive, executor, next);
@@ -345,11 +372,6 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			@Override
 			public Description getDescription() {
 				return adapter.getDescription(this);
-			}
-
-			@Override
-			public Object createContext(Object parent) {
-				return new InstVisitor().instantiate(this, parent);
 			}
 		};
 	}
@@ -363,9 +385,9 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		return newCommand(name, parent, method, converters, new CommandAdapter() {
 			@Override
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
-				;
+				Object[] arguments = fr.labri.shelly.impl.ConverterFactory.convertArray(converters, text, executor.getCommandLine());
 				try {
-					method.invoke(grp, fr.labri.shelly.impl.ConverterFactory.convertArray(converters, text, executor.getCommandLine()));
+					method.invoke(grp, arguments);
 				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 					throw new RuntimeException(e);
 				}
@@ -376,34 +398,6 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 				return DescriptionFactory.getCommandDescription(method, SUMMARY.getCommand(method));
 			}
 		});
-	}
-
-	static class InstVisitor extends fr.labri.shelly.impl.Visitor<Class<?>, Member> {
-		private Object group;
-
-		@Override
-		public void visit(Group<Class<?>, Member> cmdGroup) {
-		}
-
-		@Override
-		public void visit(Composite<Class<?>, Member> ctx) {
-			visit_parent(ctx);
-			group = ctx.instantiateObject(group);
-		}
-
-		@Override
-		public void visit(Command<Class<?>, Member> cmdGroup) {
-			visit_parent(cmdGroup);
-		}
-
-		public Object instantiate(Action<Class<?>, Member> cmd, Object lastValidParent) {
-			group = lastValidParent;
-			if (cmd instanceof Group)
-				visit((Composite<Class<?>, Member>) (Group<Class<?>, Member>) cmd);
-			else
-				cmd.accept(this);
-			return group;
-		}
 	}
 
 	static OptionAdapter getFieldAdapter(final Field field) {

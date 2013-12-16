@@ -6,7 +6,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 import fr.labri.shelly.Action;
-import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
@@ -36,10 +35,11 @@ public class Executor {
 		Action<Class<?>, Member> cmd = start;
 		Action<Class<?>, Member> last = cmd;
 		
-		Object ctx = fillOptions(start, start.instantiateObject(parent));
-		while (_cmdline.hasNext())
+		Object ctx = start.instantiateObject(parent);
+		fillOptions(start, ctx);
+		while (cmd != null && _cmdline.hasNext())
 			if ((cmd = findAction(last = cmd, _parser, peek())) != null)
-				ctx = executeAction(_cmdline.next(),last = cmd, ctx);
+				ctx = executeAction(next(), last = cmd, ctx);
 		
 		finalize(last, ctx);
 	}
@@ -62,7 +62,7 @@ public class Executor {
 		try {
 			Visitor<Class<?>, Member> v = new ActionVisitor<Class<?>, Member>() {
 				@Override
-				public void visit(Command<Class<?>, Member> grp) {
+				public void visit(Action<Class<?>, Member> grp) {
 					if (grp.hasAnnotation(Default.class)) {
 						throw new FoundCommand(grp);
 					}
@@ -90,7 +90,7 @@ public class Executor {
 	public void callError(Method found, Object parent) {
 		ArrayList<String> arr = new ArrayList<String>();
 		while (_cmdline.hasNext())
-			arr.add(_cmdline.next());
+			arr.add(next());
 		try {
 			found.invoke(parent, new RuntimeException("Command not found"), arr.toArray(new String[arr.size()]));
 		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
@@ -98,19 +98,53 @@ public class Executor {
 	}
 
 	public Object executeAction(String txt, Action<Class<?>, Member> cmd, Object parent) {
-		parent = cmd.createContext(parent);
-		parent = fillOptions(cmd, parent);
+		parent = createContext(cmd, parent);
+		fillOptions(cmd, parent);
 		cmd.executeAction(parent, txt, this);
 		return parent;
 	}
 
-	private Object fillOptions(Action<Class<?>, Member> subCmd, Object parent) {
-		OptionParserVisitor visitor = new OptionParserVisitor();
-		if(_parser.stopOptionParsing(_cmdline.peek()))
-			_cmdline.next();
-		else while (visitor.setOption(subCmd, parent))
+	private void fillOptions(Action<Class<?>, Member> subCmd, Object parent) {
+		if(!_cmdline.hasNext()) return;
+		
+		String peek = peek();
+		if(_parser.stopOptionParsing(peek)) {
+			next(); // consume token and stop parsing
+//		} else if( _parser.isLongOption(peek)) {
+//			// TODO implement short	
+//			OptionParserVisitor visitor = new OptionParserVisitor() {
+//				public void visit(Option<Class<?>, Member> opt) {
+//					if (!_mode.isIgnored(opt))
+//						if (_parser.isValidShortOption(letter, opt)) {
+//							throw new FoundOption(opt);
+//						}
+//				}
+//
+//				@Override
+//				public void setValue(Option<?, ?> opt) {
+//					
+//					opt.executeAction(receive, _cmdline.next(), Executor.this);					
+//				}
+//			};
+//			while (visitor.setOption(subCmd, parent))
+//				;
+		} else {
+			OptionSetterVisitor visitor = new OptionSetterVisitor() {
+				public void visit(Option<Class<?>, Member> opt) {
+					if (!_mode.isIgnored(opt))
+						if (_parser.isLongOptionValid(peek(), opt)) {
+							throw new FoundOption(opt);
+						}
+				}
+
+				@Override
+				public void setValue(Option<?, ?> opt) {
+					opt.executeAction(receive, next(), Executor.this);					
+				}
+			};
+			while (_cmdline.hasNext() && _parser.isLongOption(peek) && visitor.setOption(subCmd, parent))
 			;
-		return parent;
+		}
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -120,7 +154,7 @@ public class Executor {
 				@Override
 				public void visit(Action<Class<?>, Member> grp) {
 					if (!_mode.isIgnored(grp))
-						if (parser.isValid(cmd, grp)) {
+						if (parser.isActionValid(cmd, grp)) {
 							throw new Visitor.FoundCommand(grp);
 						}
 				}
@@ -132,7 +166,7 @@ public class Executor {
 		return null;
 	}
 
-	class OptionParserVisitor extends OptionVisitor<Class<?>, Member> {
+	abstract class OptionSetterVisitor extends OptionVisitor<Class<?>, Member> {
 		Object receive;
 
 		@Override
@@ -140,12 +174,7 @@ public class Executor {
 			receive = null;
 		}
 
-		public void visit(Option<Class<?>, Member> opt) {
-			if (!_mode.isIgnored(opt))
-				if (_parser.isValid(_cmdline.peek(), opt)) {
-					throw new FoundOption(opt);
-				}
-		}
+		abstract public void visit(Option<Class<?>, Member> opt);
 
 		@Override
 		public void visit(Group<Class<?>, Member> grp) {
@@ -172,12 +201,41 @@ public class Executor {
 			} catch (FoundOption e) {
 				if (e.opt == null)
 					return false;
-				e.opt.executeAction(receive, _cmdline.next(), Executor.this);
+				setValue(e.opt);
 				return true;
 			}
 		}
+
+		abstract public void setValue(Option<?, ?> opt);
 	}
 	
+	private Object createContext(Action<Class<?>, Member> cmd, Object parent) {
+		InstVisitor v = new InstVisitor(parent);
+		cmd.startVisit(v);
+		return v.group;
+	}
+
+	static class InstVisitor extends fr.labri.shelly.impl.Visitor.ParentVisitor<Class<?>, Member> {
+		private Object group;
+		public InstVisitor(Object parent) {
+			group = parent;
+		}
+
+		@Override
+		public void visit(Group<Class<?>, Member> cmdGroup) {
+		}
+
+		@Override
+		public void visit(Composite<Class<?>, Member> ctx) {
+			visit((Item<Class<?>, Member>)ctx);
+			group = ctx.instantiateObject(group);
+		}
+
+		public void startVisit(Group<Class<?>, Member> cmdGroup) {
+			visit((Composite<Class<?>, Member>) cmdGroup);
+		}
+	}
+
 	public PeekIterator<String> getCommandLine() {
 		return _cmdline;
 	}
@@ -189,4 +247,8 @@ public class Executor {
 	public String peek() {
 		return _cmdline.peek();
 	}
+	public String next() {
+		return _cmdline.next();
+	}
+
 }

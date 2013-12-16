@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import fr.labri.shelly.Converter;
-import fr.labri.shelly.annotations.AnnotationUtils;
 import fr.labri.shelly.annotations.Param;
 
 public class ConverterFactory {
@@ -141,20 +140,22 @@ public class ConverterFactory {
 		public abstract T convert(String value);
 	}
 
-	static class Cache {
-		Map<Class<? extends fr.labri.shelly.ConverterFactory>, fr.labri.shelly.ConverterFactory> _objects = new HashMap<Class<? extends fr.labri.shelly.ConverterFactory>, fr.labri.shelly.ConverterFactory>();
+	static abstract class Cache<E> {
+		Map<Class<E>, E> _objects = new HashMap<Class<E>, E>();
 
-		public fr.labri.shelly.ConverterFactory newFactory(Class<? extends fr.labri.shelly.ConverterFactory> clazz) {
+		@SuppressWarnings("unchecked")
+		public E newFactory(Class<? extends E> clazz) {
 			if(_objects.containsKey(clazz))
 				return _objects.get(clazz);
 			try {
-				fr.labri.shelly.ConverterFactory o = clazz.newInstance();
-				_objects.put(clazz, o);
+				E o = newItem((Class<E>) clazz);
+				_objects.put( (Class<E>) clazz, o);
 				return o; 
 			} catch (InstantiationException | IllegalAccessException e) {
 				throw new RuntimeException(String.format("Cannot instantiate factory: %s", clazz));
 			}
 		}
+		abstract E newItem(Class<E> clazz) throws InstantiationException, IllegalAccessException; // clazz.newInstance()
 	}
 	
 	public static Converter<?>[] getConverters(final fr.labri.shelly.ConverterFactory factory, Class<?> param) {
@@ -183,8 +184,13 @@ public class ConverterFactory {
 			Param pa = AnnotationUtils.getAnnotation(annotations[i], Param.class);
 			if(pa != null && !fr.labri.shelly.ConverterFactory.class.equals(c = pa.converter()))
 					f = cache.newFactory(c);
+			Converter<?> converter = null;
+			if (f != null)
+				converter = f.getConverter(a, false, params);
+			if(converter == null)
+				converter = factory.getConverter(a, false, params);
 			
-			converters[i++] =  ((f == null) ? factory : f).getConverter(a, false, params);
+			converters[i++] =  converter;
 		}
 		return converters;
 	}
@@ -196,7 +202,13 @@ public class ConverterFactory {
 		return args;
 	}
 
-	static private Cache cache = new Cache();
+	static private Cache<fr.labri.shelly.ConverterFactory> cache = new Cache<fr.labri.shelly.ConverterFactory>(){
+		@Override
+		fr.labri.shelly.ConverterFactory newItem(Class<fr.labri.shelly.ConverterFactory> clazz) throws InstantiationException, IllegalAccessException {
+			return clazz.newInstance();
+		}
+	};
+	
 	public static fr.labri.shelly.ConverterFactory getComposite(fr.labri.shelly.ConverterFactory parent, Class<? extends fr.labri.shelly.ConverterFactory>[] newFactory) {
 		fr.labri.shelly.ConverterFactory[] factories = new fr.labri.shelly.ConverterFactory[newFactory.length];
 		for(int i = 0; i < newFactory.length; i ++)

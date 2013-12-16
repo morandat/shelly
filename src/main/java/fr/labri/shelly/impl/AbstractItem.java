@@ -4,7 +4,6 @@ import java.lang.annotation.Annotation;
 
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Item;
-import fr.labri.shelly.annotations.AnnotationUtils;
 
 public abstract class AbstractItem<C, M> implements Item<C, M> {
 	protected final Annotation[] _annotations;
@@ -35,5 +34,19 @@ public abstract class AbstractItem<C, M> implements Item<C, M> {
 	@Override
 	public boolean hasAnnotation(Class<? extends Annotation> a) {
 		return getAnnotation(a) != null;
-	}	
+	}
+	
+	static public <C,M> String getFullName(Item<C, M> item) {
+		final StringBuilder builder = new StringBuilder();
+		item.accept(new Visitor.ParentVisitor<C, M>() {
+			@Override
+			public void visit(Item<C, M> item) {
+				super.visit(item);
+				if(item.getParent() != null)
+					builder.append(".");
+				builder.append(item.getID());
+			}
+		});
+		return builder.toString();
+	}
 }

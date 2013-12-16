@@ -15,12 +15,11 @@ import javax.lang.model.element.TypeElement;
 import fr.labri.shelly.Action;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Group;
-import fr.labri.shelly.annotations.AnnotationUtils;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
 import fr.labri.shelly.annotations.Option;
 import fr.labri.shelly.annotations.Param;
 import fr.labri.shelly.impl.Visitor.ActionVisitor;
-import static fr.labri.shelly.annotations.AnnotationUtils.*;
+import static fr.labri.shelly.impl.AnnotationUtils.*;
 
 public class DescriptionFactory {
 
@@ -168,10 +167,10 @@ public class DescriptionFactory {
 		return Description.ExtraDescription.getExtraDescription(getDescription(method, shortDesc), describeParamaters(method));			
 	}
 
-	public static <C, M, V extends C> Description getGroupDescription(final Group<C, M> grp, Class<?> c, String shortDesc) {
+	public static <C, M> Description getGroupDescription(final Group<C, M> grp, Class<?> c, String shortDesc) {
 		return Description.ExtraDescription.getExtraDescription(getDescription(c, shortDesc), describeSubCommands(grp));			
 	}
-	public static <C, M, V extends C> Description getGroupDescription(final Group<C, M> grp, TypeElement c, String shortDesc) {
+	public static <C, M> Description getGroupDescription(final Group<C, M> grp, TypeElement c, String shortDesc) {
 		return Description.ExtraDescription.getExtraDescription(getDescription(c, shortDesc), describeSubCommands(grp));			
 	}
 	@SuppressWarnings("unchecked")
@@ -183,8 +182,9 @@ public class DescriptionFactory {
 		final ArrayList<String[]> list = new ArrayList<String[]>();
 		new ActionVisitor<C, M>() {
 			public void visit(Action<C, M> cmd) {
-				if(!ExecutorMode.HELP.isIgnored(cmd))
+				if(!ExecutorMode.HELP.isIgnored(cmd)) {
 					list.add(new String[]{cmd.getID(), cmd.getDescription().getShortDescription()});
+				}
 			}
 		}.startVisit(grp);
 		final String[][] res = new String[list.size()][]; 

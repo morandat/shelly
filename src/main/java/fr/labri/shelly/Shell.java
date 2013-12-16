@@ -143,7 +143,7 @@ public class Shell {
 			Visitor<C, M> v = new Visitor.ActionVisitor<C, M>() {
 				@Override
 				public void visit(Action<C, M> grp) {
-					if (parser.isValid(cmd, grp)) {
+					if (parser.isActionValid(cmd, grp)) {
 						throw new Visitor.FoundCommand(grp);
 					}
 				}
@@ -180,7 +180,7 @@ public class Shell {
 			if (start instanceof Group) {
 				OptionVisitor<C, M> v = new OptionVisitor<C, M>() {
 					public void visit(Option<C, M> option) {
-						if (parser.isValid(cmd, option))
+						if (parser.isLongOptionValid(cmd, option))
 							throw new FoundOption(option);
 					};
 				};

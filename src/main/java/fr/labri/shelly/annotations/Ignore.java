@@ -6,7 +6,7 @@ public @interface Ignore {
 	ExecutorMode[] value() default {};
 	
 	public enum ExecutorMode {
-		INTERACTIVE, BATCH, HELP;
+		INTERACTIVE, BATCH, HELP, ALL;
 
 		public boolean isIgnored(Item<?, ?> a) {
 			Ignore ign = a.getAnnotation(Ignore.class);
@@ -17,7 +17,7 @@ public @interface Ignore {
 		
 		public boolean isIgnored(ExecutorMode[] values) {
 			for(ExecutorMode v: values)
-				if(equals(v))
+				if(ALL.equals(v) || equals(v))
 					return true;
 			return false;
 		}

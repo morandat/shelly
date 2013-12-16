@@ -7,7 +7,15 @@ public interface Parser {
 
 	boolean strictOptions();
 	boolean stopOptionParsing(String cmd);
-	boolean isValid(String cmd, Option<?, ?> option);
-	boolean isValid(String cmd, Action<?, ?> option);
+	
+	boolean isLongOption(String cmd);
+	boolean isShortOption(String cmd);
 
+	boolean isLongOptionValid(String cmd, Option<?, ?> option);
+	boolean isShortOptionValid(String cmd, Option<?, ?> option);
+	boolean isActionValid(String cmd, Action<?, ?> option);
+	
+	// Assume isLongOption == true
+	boolean getBooleanValue(String cmd);
+	int isLongBooleanOptionValid(String str, Option<?, ?> option, int index);
 }

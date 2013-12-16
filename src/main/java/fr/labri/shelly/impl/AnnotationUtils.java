@@ -1,4 +1,4 @@
-package fr.labri.shelly.annotations;
+package fr.labri.shelly.impl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -14,7 +14,10 @@ import javax.lang.model.element.Element;
 
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.ModelFactory;
-import fr.labri.shelly.impl.ExecutableModelFactory;
+import fr.labri.shelly.annotations.Command;
+import fr.labri.shelly.annotations.Context;
+import fr.labri.shelly.annotations.Group;
+import fr.labri.shelly.annotations.Option;
 import fr.labri.shelly.impl.ConverterFactory.BasicConverter;
 
 public class AnnotationUtils {
@@ -40,7 +43,7 @@ public class AnnotationUtils {
 			dflt = value;
 			try {
 				for (Class<? extends Annotation> a : ModelFactory.SHELLY_ANNOTATIONS)
-					f.put(a, a.getField(field));
+						f.put(a, a.getField(field));
 			} catch (NoSuchFieldException | SecurityException e) {
 			}
 		}
@@ -92,7 +95,7 @@ public class AnnotationUtils {
 	@SuppressWarnings("unchecked")
 	public static <T extends Annotation> T getAnnotation(Annotation[] annotations, Class<T> _dummy) {
 		for (Annotation a : annotations)
-			if (a.annotationType().equals(_dummy))
+			if (_dummy.equals(a.annotationType()))
 				return (T) a;
 		return null;
 	}
@@ -181,22 +184,22 @@ public class AnnotationUtils {
 		}
 	}
 
-	public static Annotation[] getAnnotation(Element clazz) {
+	public static Annotation[] extractAnnotation(Element clazz) {
 		List<? extends AnnotationMirror> l = clazz.getAnnotationMirrors();
 		ArrayList<Annotation> res = new ArrayList<Annotation>(l.size());
 		for(Class<? extends Annotation> a : ModelFactory.SHELLY_ANNOTATIONS) {
 			Annotation v = clazz.getAnnotation(a);
-			if(clazz != null)
+			if(v != null)
 				res.add(v);
 		}
-		return res.toArray(new Annotation[l.size()]);
+		return res.toArray(new Annotation[res.size()]);
 	}
 
-	public static Annotation[] getAnnotation(Member item) {
-		return getAnnotation((AnnotatedElement) item);
+	public static Annotation[] extractAnnotation(Member item) {
+		return extractAnnotation((AnnotatedElement) item);
 	}
 	
-	public static Annotation[] getAnnotation(AnnotatedElement item) {
+	public static Annotation[] extractAnnotation(AnnotatedElement item) {
 		return item.getAnnotations();
 	}
 	

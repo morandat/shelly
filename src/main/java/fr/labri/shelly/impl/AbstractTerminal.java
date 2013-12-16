@@ -13,8 +13,8 @@ public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implemen
 		}
 
 		@Override
-		public int isValid(String str, int index) {
-			return startWith(str, _id, index);
+		public int isValid(Parser parser, String str, int index) {
+			return StringUtils.startWith(str, _id, index);
 		}
 		
 		@Override
@@ -22,16 +22,7 @@ public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implemen
 			return _element;
 		}
 
-		static public int startWith(String str, String prefix, int offset) {
-			return str.startsWith(prefix, offset) ? prefix.length() : -1;
-		}
-		
-		static public boolean endsWith(String str, String suffix, int offset) {
-			return (offset + suffix.length() == str.length()) ? str.endsWith(suffix) : false;
-		}
-		
 		@Override
 		public void executeAction(Object receive, String string, Executor executor) {
 		}
-
 }

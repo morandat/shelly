@@ -18,11 +18,12 @@ public class SimpleProject {
 
 	@Option(name = "verbose")
 	public String verbose;
-	
+
 	@Option
 	public boolean debug = true;
 
 	int level = 0;
+
 	@Option(summary = "an accessor exemple")
 	public void setVirt(int val) {
 		level = val;
@@ -55,8 +56,8 @@ public class SimpleProject {
 	public void newoldhelp(String[] cmds) {
 		HelpFactory.NAVIGATOR.findTopic(Shell.createShell(SimpleProject.class).getRoot(), ParserFactory.GNUNonStrict, cmds);
 	}
-	
-	@Command(factory=HelpFactory.CommandFactory.class)
+
+	@Command(factory = HelpFactory.CommandFactory.class)
 	public void help() {
 		// This method is just a hook for annotation, it won't be called
 		// Parameters type are inspected to determine help components
@@ -67,7 +68,7 @@ public class SimpleProject {
 	@Command(summary = "Some short text")
 	@Description(url = "!echo.txt")
 	public void echo(String data[]) {
-		System.out.println("options: "+debug);
+		System.out.println("options: " + debug);
 		System.out.println(Arrays.toString(data));
 	}
 
@@ -91,7 +92,8 @@ public class SimpleProject {
 			public String truc;
 
 			@Command
-			public void describe(@Param(value="a value which may be a prefix", converter = MyFactory.class) String v1, @Param( "another string, this time it's a suffix") String v2) {
+			public void describe(@Param(value = "a value which may be a prefix", converter = MyFactory.class) String v1,
+					@Param("another string, this time it's a suffix") String v2) {
 				System.out.println("verbose(in): " + verbose);
 				System.out.println("level: " + level);
 				System.out.println("verbose(out):" + SimpleProject.this.verbose);
@@ -137,11 +139,12 @@ public class SimpleProject {
 	public void color(Color c) {
 		System.out.println(c);
 	}
-	
+
 	@Command
 	public void colorbis(@Param(converter = MyFactory.class) Color c) {
 		System.out.println(c);
-	}	
+	}
+
 	static public class MyFactory implements ConverterFactory {
 		public Converter<?> getConverter(Class<?> type, boolean isOption, Object context) {
 			if (type.isAssignableFrom(Color.class))

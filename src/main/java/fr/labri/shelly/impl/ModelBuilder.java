@@ -7,10 +7,8 @@ import fr.labri.shelly.Composite;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
-import fr.labri.shelly.annotations.AnnotationUtils;
 import fr.labri.shelly.impl.Visitor.TraversalVisitor;
-
-import static fr.labri.shelly.annotations.AnnotationUtils.*;
+import static fr.labri.shelly.impl.AnnotationUtils.*;
 
 public abstract class ModelBuilder<C, M> {
 	abstract public Group<C, M> createModel(C clazz);

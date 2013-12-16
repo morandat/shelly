@@ -23,19 +23,14 @@ public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implem
 	}
 	
 	@Override
-	public int isValid(String str, int index) {
-		return AbstractTerminal.startWith(str, _id, index);
+	public int isValid(Parser parser, String str, int index) {
+		return StringUtils.startWith(str, _id, index);
 	}
 	
-	@Override
-	public Object createContext(Object parent) {
-		return null;
-	}
-
 	@Override
 	public void executeAction(Object receive, String string, Executor executor) {
 	}
-	
+
 	@Override
 	public String toString() {
 		return "group " + getID();

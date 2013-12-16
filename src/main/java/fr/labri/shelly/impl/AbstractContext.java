@@ -5,7 +5,7 @@ import java.lang.annotation.Annotation;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Visitor;
 
-public class AbstractContext<C, M> extends  AbstractComposite<C, M> implements fr.labri.shelly.Context<C, M>{
+public abstract class AbstractContext<C, M> extends  AbstractComposite<C, M> implements fr.labri.shelly.Context<C, M>{
 	public AbstractContext(Composite<C, M> parent, String name, C clazz, Annotation[] annotations) {
 		super(parent, name, clazz, annotations);
 	}

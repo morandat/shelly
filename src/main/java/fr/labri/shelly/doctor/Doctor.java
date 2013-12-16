@@ -1,99 +1,206 @@
 package fr.labri.shelly.doctor;
 
-import java.lang.reflect.Member;
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementKindVisitor7;
+import javax.tools.Diagnostic.Kind;
 
-import fr.labri.shelly.Action;
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Context;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Group;
+import fr.labri.shelly.Item;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Terminal;
-import fr.labri.shelly.annotations.AnnotationUtils;
-import fr.labri.shelly.annotations.AnnotationUtils.ElementValue;
+import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.impl.AbstractGroup;
 import fr.labri.shelly.impl.AbstractContext;
 import fr.labri.shelly.impl.AbstractCommand;
+import fr.labri.shelly.impl.AbstractItem;
 import fr.labri.shelly.impl.AbstractOption;
+import fr.labri.shelly.impl.AnnotationUtils;
 import fr.labri.shelly.impl.DescriptionFactory;
 import fr.labri.shelly.impl.ExecutableModelFactory;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelBuilder;
 import fr.labri.shelly.impl.Visitor;
+import fr.labri.shelly.impl.AnnotationUtils.ElementValue;
 import static fr.labri.shelly.ModelFactory.*;
 
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
-@SupportedAnnotationTypes(value = { "fr.labri.shelly.annotations.*" })
+@SupportedAnnotationTypes( "fr.labri.shelly.annotations.*" )
+@SupportedOptions({Doctor.STRICT, Doctor.DEBUG})
 public class Doctor extends AbstractProcessor {
-	ElementModelBuilder ELEMENT_MODEL_BUILDER = new ElementModelBuilder();
-	ElementModelFactory ELEMENT_MODEL_FACTORY = new ElementModelFactory();
+	
+	public static final String STRICT = "strict";
+	public static final String DEBUG = "debug";
 
+	private Messager messager;
+	private boolean isDebug;
+	private boolean isStrict;
+
+	ElementModelBuilder model_builder = new ElementModelBuilder();
+	ElementModelFactory model_factory = new ElementModelFactory();
+	
+	TypeMirror[] error_signature;
+	
+	String getOption(String key, String dflt) {
+		Map<String, String> options = processingEnv.getOptions();
+		if(options.containsKey(key))
+			return options.get(key);
+		return dflt;
+	}
+	
 	@Override
 	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-		System.out.println("Set: " + annotations + "\nEnv: " + roundEnv);
+		messager = processingEnv.getMessager();
+		isDebug = Boolean.parseBoolean(getOption(DEBUG, "false"));
+		isStrict = Boolean.parseBoolean(getOption(STRICT, "false"));
+
+		error_signature = new TypeMirror[] {
+				processingEnv.getElementUtils().getTypeElement("java.lang.Exception").asType(),
+				processingEnv.getTypeUtils().getArrayType(processingEnv.getElementUtils().getTypeElement("java.lang.String").asType())
+		};		
 		for (Element elt : roundEnv.getRootElements()) {
-			// if (elt.getAnnotation(GROUP_CLASS) == null) // FIXME, do we have to look further before giving the warning ?
-			// warn("Top level group %s class has no @Group annotation, let skip it.", elt);
-			// // else // i.e., is this else mandatory.
-			// Composite<TypeElement, Element> grp = check(elt);
-			createModel(elt);
+			debug(elt, "Doctor is building class");
+			Group<TypeElement, Element> model = createModel(elt);
+			debug("Doctor is cheking names in %s mode", isStrict ? "strict" : "non strict");
+			checkModel(model, isStrict);
 		}
 		return true;
 	}
 
 	public Group<TypeElement, Element> createModel(Element elt) {
 		if (!(elt instanceof TypeElement))
-			error("Root element is not a class: %s", elt);
-		Group<TypeElement, Element> grp = ELEMENT_MODEL_BUILDER.createModel((TypeElement) elt);
-		System.err.println(grp);
+			messager.printMessage(Kind.ERROR, "Root element is not a class", elt);
+		Group<TypeElement, Element> grp = model_builder.createModel((TypeElement) elt);
+//		grp.startVisit(new PrintHelpVisitor());
 
-		grp.startVisit(new Visitor.TraversalVisitor<TypeElement, Element>() {
-			public void visit(Context<TypeElement, Element> i) {
-				super.visit(i);
-			}
-
-			public void visit(Group<TypeElement, Element> i) {
-				HelpFactory.printHelp(i, System.out);
-				super.visit(i);
-			}
-
-			public void visit(Terminal<TypeElement, Element> i) {
-				HelpFactory.printHelp(i, System.out);
-			}
-		});
-
-		HelpFactory.printHelp(grp, System.out);
 		return grp;
 	}
 
-	protected void warn(String msg, Object... args) {
-		// Messager.
-		// printMessage(Kind.ERROR, "method wasn't public and final", element)
-		String text = String.format("[Shelly] %s\n", String.format(msg, args));
-		System.err.println(text);
+	class PrintHelpVisitor extends Visitor.TraversalVisitor<TypeElement, Element> {
+		public void visit(Context<TypeElement, Element> i) {
+			super.visit(i);
+		}
+
+		public void visit(Group<TypeElement, Element> i) {
+			HelpFactory.printHelp(i, System.out);
+			super.visit(i);
+		}
+
+		public void visit(Terminal<TypeElement, Element> i) {
+			HelpFactory.printHelp(i, System.out);
+		}
+	}
+	
+
+	protected void debug(Element elt, String msg, Object... args) {
+		if(isDebug)
+			processingEnv.getMessager().printMessage(Kind.NOTE, String.format(msg, args), elt);
+	}
+	
+	protected void debug(String msg, Object... args) {
+		if(isDebug)
+			debug(null, msg, args);
 	}
 
-	protected void error(String msg, Object... args) {
-		warn(msg, args);
-		throw new RuntimeException("error");
-	}
+	private void checkModel(Group<TypeElement, Element> model, final boolean strict) {
+		new Visitor<TypeElement, Element>() {
+			ArrayList<Map<String, Element>> _options = new ArrayList<>();
+			ArrayList<Map<String, Element>> _commands = new ArrayList<>();
+			
+			public void start(Group<TypeElement, Element> model) {
+				_commands.add(new HashMap<String, Element>());
+				_options.add(new HashMap<String, Element>());
+				visit(model);
+			}
+			
+			Visitor<TypeElement, Element> action_visitor = new Visitor<TypeElement, Element>() {
+				@Override
+				public void visit(Command<TypeElement, Element> item) {
+					addItem(item, item.getAssociatedElement(), _commands, Kind.ERROR);
+				}
+				@Override
+				public void visit(Group<TypeElement, Element> item) {
+					addItem(item, item.getAssociatedElement(), _commands, Kind.ERROR);
+				}
+			};
+			
+			Visitor<TypeElement, Element> option_visitor = new Visitor<TypeElement, Element>() {
+				@Override
+				public void visit(Option<TypeElement, Element> item) {
+					addItem(item, item.getAssociatedElement(), _options, Kind.WARNING);
+				}
+			};
 
-	// private Composite<TypeElement, Element> check(Element elt) {
-	// return elt.accept(new StrutureVisitor(), null);
-	// }
+			@Override
+			public void visit(Composite<TypeElement, Element> item) {
+				_options.add(new HashMap<String, Element>());
+				item.visit_all(option_visitor);
+				item.visit_all(this);
+				_options.remove(_options.size() - 1);
+			}
+			
+			@Override
+			public void visit(Group<TypeElement, Element> grp) {
+				addItem(grp, grp.getAssociatedElement(), _commands, Kind.ERROR);
+				
+				ArrayList<Map<String, Element>> options = null;
+				ArrayList<Map<String, Element>> commands = _commands; 
+				(_commands = new ArrayList<>()).add(new HashMap<String, Element>());
+				if(strict)
+					options = _options;
+				action_visitor.visit_actions(grp);
+				visit((Composite<TypeElement, Element>) grp);
+				if(strict)
+					_options = options;
+				_commands = commands;
+			}
+			
+			private void addItem(Item<TypeElement, Element> item, Element e,  ArrayList<Map<String,Element>> stack, Kind error) {
+				String name = item.getID();
+				Element found = getByName(name, stack);
+				Map<String, Element> last = stack.get(stack.size() - 1);
+				
+				if(found != null) {
+					error = last.containsKey(name) ? Kind.ERROR : error;
+					messager.printMessage(error, String.format("%s '%s' is hidding %s '%s'", item, AbstractItem.getFullName(item), found, e), e);
+				}
+
+				last.put(name, e);
+			}
+			
+			private Element getByName(String name, ArrayList<Map<String, Element>> stack) {
+				for(int i = stack.size(); i > 0 ; i --) {
+					Map<String, Element> names = stack.get(i - 1);
+					if(names.containsKey(name))
+						return names.get(name);
+				}
+				return null;
+			}
+		}.start(model);
+	}
 
 	class ElementModelBuilder extends ModelBuilder<TypeElement, Element> {
 		@Override
@@ -105,11 +212,51 @@ public class Doctor extends AbstractProcessor {
 		public ElementBuilder newBuilder() {
 			return new ElementBuilder();
 		}
+		
+		boolean containsOne(Element e) {
+			for (AnnotationMirror c : e.getAnnotationMirrors())
+				if (ModelFactory.SHELLY_ANNOTATIONS.contains(c.getClass()))
+					return true;
+			return false;
+		}
+
+		public void checkShellyUnreacheable(TypeElement e) {
+			e.accept(new ElementKindVisitor7<Void, Void> () {
+				@Override
+				public Void visitTypeAsClass(TypeElement e, Void p) {
+					if (e.getModifiers().contains(javax.lang.model.element.Modifier.ABSTRACT))
+						return DEFAULT_VALUE; // We do not check abstract classes
+					return super.visitTypeAsClass(e, p);
+				}
+
+				public void checkAnnotations(Element e) {
+					for(Class<? extends Annotation> a: SHELLY_ANNOTATIONS)
+						if(e.getAnnotation(a) != null)
+							messager.printMessage(Kind.ERROR, String.format("Unreachable shelly annotation %s", a.getSimpleName()), e);
+				}
+				
+				@Override
+				protected Void defaultAction(Element e, Void p) {
+					checkAnnotations(e);
+					
+					for(Element ee: e.getEnclosedElements())
+						ee.accept(this, p);
+					return DEFAULT_VALUE;
+				}
+				
+			}, null);
+			for (Element elt : e.getEnclosedElements()) {
+				if (containsOne(e))
+					messager.printMessage(Kind.WARNING, String.format("%s has Shelly annotation but %s has no Shelly annotation", elt, e), elt);
+				if (elt instanceof TypeElement)
+					checkShellyUnreacheable((TypeElement) elt);
+			}
+		}
 
 		class ElementBuilder extends Builder<TypeElement, Element> {
 			@Override
 			protected ModelFactory<TypeElement, Element> getFactory(Class<? extends ExecutableModelFactory> parent) {
-				return ELEMENT_MODEL_FACTORY;
+				return model_factory;
 			}
 
 			@Override
@@ -133,6 +280,67 @@ public class Doctor extends AbstractProcessor {
 					elt.accept(new CreateItem(), optionGroup);
 			}
 
+			@Override
+			protected Group<TypeElement, Element> createGroup(Composite<TypeElement, Element> parent, fr.labri.shelly.annotations.Group annotation,
+					TypeElement clazz) {
+				checkType(clazz, ElementKind.CLASS);
+				checkAccessibility(clazz);
+				return super.createGroup(parent, annotation, clazz);
+			}
+
+			@Override
+			protected Context<TypeElement, Element> createContext(Composite<TypeElement, Element> parent, fr.labri.shelly.annotations.Context annotation,
+					TypeElement clazz) {
+				checkType(clazz, ElementKind.CLASS);
+				checkAccessibility(clazz);
+				return super.createContext(parent, annotation, clazz);
+			}
+
+			@Override
+			protected Option<TypeElement, Element> createOption(fr.labri.shelly.annotations.Option annotation, Element member,
+					Composite<TypeElement, Element> parent) {
+				checkType(member, ElementKind.FIELD, ElementKind.METHOD);
+				if(ElementKind.METHOD == member.getKind())
+					if(((ExecutableElement)member).getParameters().size() != 1)
+						messager.printMessage(Kind.ERROR, "Option on method is only allowed for accessors, i.e., exactly one parameter", member);
+				checkAccessibility(member);
+				return super.createOption(annotation, member, parent);
+			}
+
+			@Override
+			protected Command<TypeElement, Element> createCommand(fr.labri.shelly.annotations.Command annotation, Element member,
+					Composite<TypeElement, Element> parent) {
+				checkAccessibility(member);
+				return super.createCommand(annotation, member, parent);
+			}
+			
+			void checkType(Element e, ElementKind... kinds) {
+				ElementKind k = e.getKind();
+				for(ElementKind ks: kinds)
+					if(ks == k)
+						return;
+				messager.printMessage(Kind.ERROR, String.format("Shelly item is not allowed on this kind of element %s. Allowed on %s", k, Arrays.toString(kinds)), e);
+			}
+			
+			public boolean checkSignature(TypeMirror[] expected, List<? extends VariableElement> actual) {
+				if(expected.length != actual.size())
+					return false;
+				Iterator<? extends VariableElement> it = actual.iterator();
+				for(TypeMirror ec: expected) {
+					TypeMirror a = it.next().asType(); 
+					if(!processingEnv.getTypeUtils().isSubtype(ec, a))
+						return false;
+				}
+				return true;
+			}
+			
+			void checkAccessibility(Element member) {
+				if(!member.getModifiers().contains(Modifier.PUBLIC))
+					messager.printMessage(Kind.ERROR, "Can't create non public item", member);
+				if(member.getModifiers().contains(Modifier.ABSTRACT))
+					messager.printMessage(Kind.ERROR, "Can't create abstract item", member);
+			}
+
 			class CreateItem extends ElementKindVisitor7<Void, Composite<TypeElement, Element>> {
 				@Override
 				public Void visitTypeAsClass(TypeElement e, Composite<TypeElement, Element> p) {
@@ -141,7 +349,7 @@ public class Doctor extends AbstractProcessor {
 					else if (e.getAnnotation(CONTEXT_CLASS) != null)
 						p.addItem(createContext(p, e.getAnnotation(CONTEXT_CLASS), e));
 					else
-						checkShellyAnotations(e);
+						checkShellyUnreacheable(e);
 					return defaultAction(e, p);
 				}
 
@@ -158,76 +366,23 @@ public class Doctor extends AbstractProcessor {
 						p.addItem(createCommand(e.getAnnotation(CMD_CLASS), e, p));
 					else if (e.getAnnotation(OPT_CLASS) != null)
 						p.addItem(createOption(e.getAnnotation(OPT_CLASS), e, p));
+					else if (e.getAnnotation(ERROR_CLASS) != null)
+						checkError(e.getAnnotation(ERROR_CLASS), e, p);
 					return defaultAction(e, p);
+				}
+				
+				public void checkError(Error error, ExecutableElement e, Composite<TypeElement, Element> p) {
+					checkAccessibility(e);
+					if(!checkSignature(error_signature, e. getParameters()))
+						messager.printMessage(Kind.ERROR, String.format("Error methods should have for parameters : %s", Arrays.toString(error_signature)), e);
 				}
 			}
 		}
 	}
-
-	class StrutureVisitor extends ElementKindVisitor7<Composite<TypeElement, Element>, Composite<TypeElement, Element>> {
-		@Override
-		public Composite<TypeElement, Element> visitTypeAsClass(TypeElement e, Composite<TypeElement, Element> parent) {
-			Composite<TypeElement, Element> g;
-			if (e.getAnnotation(CONTEXT_CLASS) != null) {
-				g = ELEMENT_MODEL_FACTORY.newContext(e.getSimpleName().toString(), parent, e);
-				checkContext((Context<TypeElement, Element>) g);
-			} else if (e.getAnnotation(GROUP_CLASS) != null) {
-				g = ELEMENT_MODEL_FACTORY.newGroup(e.getSimpleName().toString(), parent, e);
-				checkGroup((Group<TypeElement, Element>) g);
-			} else {
-				g = ELEMENT_MODEL_FACTORY.newGroup(e.getSimpleName().toString(), parent, e);
-				checkShellyAnotations(e);
-			}
-
-			// model_factory
-			return g;
-		}
-
-		//
-		// @Override
-		// public Group visitVariableAsField(VariableElement e, Void p) {
-		// System.out.println(e);
-		// return super.visitVariableAsField(e, p);
-		// }
-		//
-		// @Override
-		// public Group visitExecutableAsMethod(ExecutableElement e, Void p) {
-		// System.out.println(e);
-		// return super.visitExecutableAsMethod(e, p);
-		// }
-
-		public void checkContext(Context<TypeElement, Element> context) {
-			System.out.println("Check context ");
-			System.out.println("Default " + context);
-		}
-
-		public void checkGroup(Group<TypeElement, Element> grp) {
-			System.out.println("Check group " + grp.getID());
-			System.out.println("Default " + grp);
-		}
-	}
-
-	boolean containsOne(Element e) {
-		for (AnnotationMirror c : e.getAnnotationMirrors())
-			if (ModelFactory.SHELLY_ANNOTATIONS.contains(c.getClass()))
-				return true;
-		return false;
-	}
-
-	public void checkShellyAnotations(TypeElement e) {
-		if (e.getModifiers().contains(javax.lang.model.element.Modifier.ABSTRACT))
-			return; // We do not check abstract classes
-		for (Element elt : e.getEnclosedElements()) {
-			if (containsOne(e))
-				warn("%s has Shelly annotation but %s has no Shelly annotation", elt, e);
-			if (elt instanceof TypeElement)
-				checkShellyAnotations((TypeElement) elt);
-		}
-	}
-
+	
 	class ElementModelFactory implements ModelFactory<TypeElement, Element> {
 		public Group<TypeElement, Element> newGroup(final String name, Composite<TypeElement, Element> parent, TypeElement clazz) {
-			return new AbstractGroup<TypeElement, Element>(parent, name, clazz, AnnotationUtils.getAnnotation(clazz)) {
+			return new AbstractGroup<TypeElement, Element>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
 				@Override
 				public Description getDescription() {
 					return DescriptionFactory.getGroupDescription(this, _clazz, SUMMARY.getGroup(_clazz));
@@ -237,14 +392,14 @@ public class Doctor extends AbstractProcessor {
 
 		@Override
 		public Context<TypeElement, Element> newContext(String name, Composite<TypeElement, Element> parent, TypeElement clazz) {
-			return new AbstractContext<TypeElement, Element>(parent, name, clazz, AnnotationUtils.getAnnotation(clazz)) {
+			return new AbstractContext<TypeElement, Element>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
 			};
 		}
 
 		@Override
 		public Command<TypeElement, Element> newCommand(ConverterFactory loadFactory, Composite<TypeElement, Element> parent, final String name,
 				final Element member) {
-			return new AbstractCommand<TypeElement, Element>(name, parent, member, AnnotationUtils.getAnnotation(member)) {
+			return new AbstractCommand<TypeElement, Element>(name, parent, member, AnnotationUtils.extractAnnotation(member)) {
 				@Override
 				public Description getDescription() {
 					return DescriptionFactory.getDescription(member, name);
@@ -255,7 +410,7 @@ public class Doctor extends AbstractProcessor {
 		@Override
 		public Option<TypeElement, Element> newOption(ConverterFactory loadFactory, Composite<TypeElement, Element> parent, final String name,
 				final Element member) {
-			return new AbstractOption<TypeElement, Element>(parent, name, member, AnnotationUtils.getAnnotation(member)) {
+			return new AbstractOption<TypeElement, Element>(parent, name, member, AnnotationUtils.extractAnnotation(member)) {
 				@Override
 				public Description getDescription() {
 					return DescriptionFactory.getDescription(member, name);
