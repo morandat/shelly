@@ -1,8 +1,8 @@
 package fr.labri.shelly;
 
-import fr.labri.shelly.impl.ParserFactory.AbstractParser;
+import fr.labri.shelly.impl.ParserFactory.AbstractRecognizer;
 
-public interface Parser {
+public interface Recognizer {
 
 	boolean strictOptions();
 	boolean stopOptionParsing(String cmd);
@@ -18,16 +18,16 @@ public interface Parser {
 	boolean getBooleanValue(String cmd);
 	int isLongBooleanOptionValid(String str, Option<?, ?> option, int index);
 	
-	public static final Parser GNUNonStrict = new AbstractParser() {
+	public static final Recognizer GNUNonStrict = new AbstractRecognizer() {
 
 	};
-	public static final Parser GNUStrict = new AbstractParser() {
+	public static final Recognizer GNUStrict = new AbstractRecognizer() {
 		// TODO maybe rename BSD
 		{
 			stictOptions = true;
 		}
 	};
-	public static Parser Java = new AbstractParser() {
+	public static Recognizer Java = new AbstractRecognizer() {
 		{
 			longOptionPrefix = "-";
 			shortOptionPrefix = null;

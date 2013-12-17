@@ -11,8 +11,9 @@ import fr.labri.shelly.impl.Converters.SimpleConverter;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelUtil;
 import fr.labri.shelly.Converter;
-import fr.labri.shelly.Parser;
+import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Shell;
+import fr.labri.shelly.Shelly;
 
 @Group(name = "git")
 public class SimpleProject {
@@ -34,13 +35,13 @@ public class SimpleProject {
 	@Command
 	@Description(summary = "a another short ex.")
 	public void oldhelp(String[] cmds) {
-		Shell shell = Shell.createShell(SimpleProject.class);
+		Shell shell = Shelly.createShell(SimpleProject.class);
 		if (cmds.length == 0) {
 			shell.printHelp(System.out);
 		} else {
 			fr.labri.shelly.Action<Class<?>, Member> parent = shell.getRoot();
 			for (int i = 0; i < cmds.length; i++) {
-				fr.labri.shelly.Action<Class<?>, Member> cmd = ModelUtil.findAction(parent, Parser.GNUNonStrict, cmds[i]);
+				fr.labri.shelly.Action<Class<?>, Member> cmd = ModelUtil.findAction(parent, Recognizer.GNUNonStrict, cmds[i]);
 				if (cmd == null) {
 					System.out.println("No topic " + cmds[i]);
 					break;
@@ -55,7 +56,7 @@ public class SimpleProject {
 	@Command(summary = "short way to go")
 	@Description("A more long way to go !")
 	public void newoldhelp(String[] cmds) {
-		HelpFactory.NAVIGATOR.findTopic(Shell.createShell(SimpleProject.class).getRoot(), Parser.GNUNonStrict, cmds);
+		HelpFactory.NAVIGATOR.findTopic(Shelly.createShell(SimpleProject.class).getRoot(), Recognizer.GNUNonStrict, cmds);
 	}
 
 	@Command(factory = HelpFactory.Factory.class)
@@ -168,10 +169,10 @@ public class SimpleProject {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		Shell shell = Shell.createShell(SimpleProject.class);
+		Shell shell = Shelly.createShell(SimpleProject.class);
 		if (args.length == 0)
-			shell.loop(System.in, Parser.GNUNonStrict);
+			shell.loop(System.in, Recognizer.GNUNonStrict);
 		else
-			shell.parseCommandLine(args, Parser.GNUNonStrict);
+			shell.parseCommandLine(args, Recognizer.GNUNonStrict);
 	}
 }

@@ -17,7 +17,7 @@ import fr.labri.shelly.Description;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
-import fr.labri.shelly.Parser;
+import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.impl.AnnotationUtils.ReflectValue;
@@ -293,7 +293,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	public static Option<Class<?>, Member> newBooleanOption(String name, Composite<Class<?>, Member> parent, Member member, final OptionAdapter adapter) {
 		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation(member)) {
 			@Override
-			public int isValid(Parser parser, String str, int index) {
+			public int isValid(Recognizer parser, String str, int index) {
 				return parser.isLongBooleanOptionValid(str, this, index);
 			}
 

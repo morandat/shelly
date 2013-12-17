@@ -5,7 +5,7 @@ import fr.labri.shelly.Composite;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Item;
 import fr.labri.shelly.Option;
-import fr.labri.shelly.Parser;
+import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.impl.Visitor.FoundCommand;
 import fr.labri.shelly.impl.Visitor.FoundOption;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
@@ -13,7 +13,7 @@ import fr.labri.shelly.impl.Visitor.OptionVisitor;
 public class ModelUtil {
 
 	@SuppressWarnings("unchecked")
-	public static <C,M> Action<C, M> findAction(Action<C, M> start, final Parser parser, final String cmd) {
+	public static <C,M> Action<C, M> findAction(Action<C, M> start, final Recognizer parser, final String cmd) {
 		try {
 			Visitor<C, M> v = new Visitor.ActionVisitor<C, M>() {
 				@Override
@@ -50,7 +50,7 @@ public class ModelUtil {
 	}
 	
 	@SuppressWarnings("unchecked")
-	static public <C,M> Option<C, M> findOption(Action<C, M> start, final Parser parser, final String cmd) {
+	static public <C,M> Option<C, M> findOption(Action<C, M> start, final Recognizer parser, final String cmd) {
 		try {
 				OptionVisitor<C, M> v = new OptionVisitor<C, M>() {
 					@Override

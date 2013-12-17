@@ -2,7 +2,6 @@ package fr.labri.shelly;
 
 import fr.labri.shelly.impl.Environ;
 
-
 public interface Composite<C, M> extends Item<C, M> {
 	
 	public abstract C getAssociatedElement();

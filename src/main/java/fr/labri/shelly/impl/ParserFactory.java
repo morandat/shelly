@@ -2,11 +2,11 @@ package fr.labri.shelly.impl;
 
 import fr.labri.shelly.Action;
 import fr.labri.shelly.Option;
-import fr.labri.shelly.Parser;
+import fr.labri.shelly.Recognizer;
 
 public class ParserFactory {
 
-	public static abstract class AbstractParser implements Parser {
+	public static abstract class AbstractRecognizer implements Recognizer {
 		protected boolean stictOptions = false;
 		protected String optionStopper = "--";
 		protected String longOptionPrefix = "--";

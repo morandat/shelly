@@ -3,7 +3,7 @@ package fr.labri.shelly.impl;
 import java.lang.annotation.Annotation;
 
 import fr.labri.shelly.Composite;
-import fr.labri.shelly.Parser;
+import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Terminal;
 
 public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implements Terminal<C, M> {
@@ -14,7 +14,7 @@ public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implemen
 		}
 
 		@Override
-		public int isValid(Parser parser, String str, int index) {
+		public int isValid(Recognizer parser, String str, int index) {
 			return StringUtils.startWith(str, _id, index);
 		}
 		

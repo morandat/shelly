@@ -10,7 +10,7 @@ import fr.labri.shelly.Composite;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Item;
-import fr.labri.shelly.Parser;
+import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.annotations.Default;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
@@ -21,13 +21,16 @@ import fr.labri.shelly.impl.Visitor.OptionVisitor;
 
 public class Executor {
 	PeekIterator<String> _cmdline;
-	final Parser _parser;
-	final ExecutorMode _mode = ExecutorMode.BATCH;
+	final Recognizer _parser;
+	final ExecutorMode _mode;
 
-	public Executor(Parser parser) {
-		_parser = parser;
+	public Executor(Recognizer parser) {
+		this(parser, ExecutorMode.BATCH);
 	}
-	
+	public Executor(Recognizer parser, ExecutorMode mode) {
+		_parser = parser;
+		_mode = mode;
+	}	
 	private void setCmdLine(PeekIterator<String> cmdline) {
 		_cmdline = cmdline;		
 	}
@@ -145,7 +148,7 @@ public class Executor {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public Action<Class<?>, Member> findAction(Action<Class<?>, Member> action, final Parser parser, final String cmd) {
+	public Action<Class<?>, Member> findAction(Action<Class<?>, Member> action, final Recognizer parser, final String cmd) {
 		try {
 			Visitor<Class<?>, Member> v = new Visitor.ActionVisitor<Class<?>, Member>() {
 				@Override
@@ -167,32 +170,11 @@ public class Executor {
 		cmd.startVisit(new InstVisitor(environ));
 	}
 
-	static class InstVisitor extends fr.labri.shelly.impl.Visitor.ParentVisitor<Class<?>, Member> {
-		private Environ _environ;
-		public InstVisitor(Environ environ) {
-			_environ = environ;
-		}
-
-		@Override
-		public void visit(Group<Class<?>, Member> cmdGroup) {
-		}
-
-		@Override
-		public void visit(Composite<Class<?>, Member> ctx) {
-			visit((Item<Class<?>, Member>)ctx);
-			ctx.instantiateObject(_environ);
-		}
-
-		public void startVisit(Group<Class<?>, Member> cmdGroup) {
-			visit((Composite<Class<?>, Member>) cmdGroup);
-		}
-	}
-
 	public PeekIterator<String> getCommandLine() {
 		return _cmdline;
 	}
 
-	public Parser getParser() {
+	public Recognizer getParser() {
 		return _parser;
 	}
 
@@ -207,4 +189,24 @@ public class Executor {
 		return _cmdline.next();
 	}
 
+	static class InstVisitor extends fr.labri.shelly.impl.Visitor.ParentVisitor<Class<?>, Member> {
+		private Environ _environ;
+		public InstVisitor(Environ environ) {
+			_environ = environ;
+		}
+		
+		@Override
+		public void visit(Group<Class<?>, Member> cmdGroup) {
+		}
+		
+		@Override
+		public void visit(Composite<Class<?>, Member> ctx) {
+			visit((Item<Class<?>, Member>)ctx);
+			ctx.instantiateObject(_environ);
+		}
+		
+		public void startVisit(Group<Class<?>, Member> cmdGroup) {
+			visit((Composite<Class<?>, Member>) cmdGroup);
+		}
+	}
 }

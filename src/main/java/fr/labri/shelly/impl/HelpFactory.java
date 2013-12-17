@@ -15,7 +15,7 @@ import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Group;
-import fr.labri.shelly.Parser;
+import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
@@ -73,7 +73,7 @@ public class HelpFactory {
 	}
 	
 	public interface HelpNavigator {
-		public abstract <C, M> Triggerable<C, M> findTopic(Composite<C, M> context, Parser parser, String[] cmds);
+		public abstract <C, M> Triggerable<C, M> findTopic(Composite<C, M> context, Recognizer parser, String[] cmds);
 	}
 
 	public interface HelpRenderer {
@@ -172,7 +172,6 @@ public class HelpFactory {
 					help.skipLine();
 
 					help.addTitle("Commands");
-					System.out.println(d.getClass());
 					help.addHelp(d.getDescription());
 					help.skipLine();
 
@@ -237,7 +236,7 @@ public class HelpFactory {
 
 	public static final HelpNavigator NAVIGATOR = new HelpNavigator() {
 		@Override
-		public <C,M> Triggerable<C, M> findTopic(Composite<C, M> context, Parser parser, String[] cmds) {
+		public <C,M> Triggerable<C, M> findTopic(Composite<C, M> context, Recognizer parser, String[] cmds) {
 			if (cmds.length == 0) {
 				return ModelUtil.findGroup(context);
 			} else {
@@ -245,7 +244,7 @@ public class HelpFactory {
 				for (int i = 0; i < cmds.length; i++) {
 					Action<C, M> cmd = ModelUtil.findAction(parent, parser, cmds[i]);
 					if (cmd == null) {
-						System.out.println("No topic " + cmds[i]);
+						System.err.println("No topic " + cmds[i]);
 						break;
 					} else {
 						parent = cmd;

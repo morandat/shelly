@@ -4,7 +4,7 @@ import java.lang.annotation.Annotation;
 
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Group;
-import fr.labri.shelly.Parser;
+import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.Visitor;
 
@@ -24,7 +24,7 @@ public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implem
 	}
 	
 	@Override
-	public int isValid(Parser parser, String str, int index) {
+	public int isValid(Recognizer parser, String str, int index) {
 		return StringUtils.startWith(str, _id, index);
 	}
 	

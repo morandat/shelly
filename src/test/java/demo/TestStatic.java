@@ -1,7 +1,8 @@
 package demo;
 
-import fr.labri.shelly.Parser;
+import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Shell;
+import fr.labri.shelly.Shelly;
 import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.annotations.Command;
 import fr.labri.shelly.annotations.Error;
@@ -58,7 +59,7 @@ public class TestStatic {
 		@Command
 		public void foo () {
 			printInfo(getClass());
-			System.out.printf("%b %b\n", s2, n2);
+			System.out.printf("%b %b %b\n", s0, s2, n2);
 		}
 
 		@Group
@@ -141,7 +142,7 @@ public class TestStatic {
 	public void help(ShellyException e, String [] args) throws Exception {
 		System.err.println(e);
 		e.printStackTrace(System.err);
-		HelpFactory.printHelp(Shell.createShell(TestStatic.class).getRoot(), System.err);
+		HelpFactory.printHelp(Shelly.createShell(TestStatic.class).getRoot(), System.err);
 		throw e;
 	}
 		
@@ -151,6 +152,6 @@ public class TestStatic {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		Shell.createShell(TestStatic.class).loop(System.in, Parser.GNUNonStrict);;
+		Shelly.createShell(TestStatic.class).loop(System.in, Recognizer.GNUNonStrict);;
 	}
 }
