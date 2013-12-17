@@ -29,7 +29,7 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 				Visitor.this.visit(option);
 			}
 			@Override
-			public void startVisit(Composite<C, M> cmp ) {
+			public void visit(Composite<C, M> cmp ) {
 				cmp.visit_all(this);
 			}
 		};
@@ -55,6 +55,30 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 			}
 		};
 		comp.visit_all(action_visitor);
+	}
+	@Override
+	public void startVisit(Option<C, M> item) {
+		visit(item);
+	}
+
+	@Override
+	public void startVisit(Command<C, M> item) {
+		visit(item);
+	}
+
+	@Override
+	public void startVisit(Group<C, M> item) {
+		startVisit((Composite<C, M>)item);
+	}
+
+	@Override
+	public void startVisit(Context<C, M> item) {
+		startVisit((Composite<C, M>)item);
+	}
+	
+	@Override
+	public void startVisit(Composite<C, M> item) {
+		visit(item);
 	}
 	@Override
 	public void visit(Option<C, M> item ) {
@@ -123,8 +147,19 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 			visit_parent(item);
 		}
 		
-		public void startVisit(Group<C, M> item ) {
+		@Override
+		public void startVisit(Composite<C, M> item ) {
 			item.visit_all(this);
+		}
+		
+		@Override
+		public void startVisit(Command<C, M> item ) {
+			item.getParent().accept(this);
+		}
+		
+		@Override
+		public void startVisit(Option<C, M> item ) {
+			item.getParent().accept(this);
 		}
 	}
 
@@ -178,30 +213,5 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 		public FoundAnnotation(Annotation a) {
 			this.annotation = a;
 		}
-	}
-
-	@Override
-	public void startVisit(Option<C, M> item) {
-		visit(item);
-	}
-
-	@Override
-	public void startVisit(Command<C, M> item) {
-		visit(item);
-	}
-
-	@Override
-	public void startVisit(Group<C, M> item) {
-		startVisit((Composite<C, M>)item);
-	}
-
-	@Override
-	public void startVisit(Context<C, M> item) {
-		startVisit((Composite<C, M>)item);
-	}
-	
-	@Override
-	public void startVisit(Composite<C, M> item) {
-		visit(item);
 	}
 }

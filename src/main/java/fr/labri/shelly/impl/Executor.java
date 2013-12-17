@@ -28,18 +28,22 @@ public class Executor {
 		_parser = parser;
 	}
 	
+	private void setCmdLine(PeekIterator<String> cmdline) {
+		_cmdline = cmdline;		
+	}
+	
 	public void execute(PeekIterator<String> cmdline, Group<Class<?>, Member> start){
 		execute(cmdline, start, new Environ());
 	}
 	
 	public void execute(PeekIterator<String> cmdline, Group<Class<?>, Member> start, Environ environ){
-		_cmdline = cmdline;
+		setCmdLine(cmdline);
 		Action<Class<?>, Member> cmd = start;
 		Action<Class<?>, Member> last = cmd;
 		
 		start.instantiateObject(environ);
 		fillOptions(start, environ);
-		while (cmd != null && _cmdline.hasNext())
+		while (cmd != null && hasNext())
 			if ((cmd = findAction(last = cmd, _parser, peek())) != null)
 				executeAction(next(), last = cmd, environ);
 		
@@ -105,40 +109,21 @@ public class Executor {
 		cmd.executeAction(environ.getLast(), txt, this);
 	}
 
-	private void fillOptions(Action<Class<?>, Member> subCmd, Environ environ) {
+	private void fillOptions(Action<Class<?>, Member> action, Environ environ) {
 		if(!_cmdline.hasNext()) return;
 		
 		String peek = peek();
 		if(_parser.stopOptionParsing(peek)) {
 			next(); // consume token and stop parsing
-//		} else if( _parser.isLongOption(peek)) {
-//			// TODO implement short	
-//			OptionParserVisitor visitor = new OptionParserVisitor() {
-//				public void visit(Option<Class<?>, Member> opt) {
-//					if (!_mode.isIgnored(opt))
-//						if (_parser.isValidShortOption(letter, opt)) {
-//							throw new FoundOption(opt);
-//						}
-//				}
-//
-//				@Override
-//				public void setValue(Option<?, ?> opt) {
-//					
-//					opt.executeAction(receive, _cmdline.next(), Executor.this);					
-//				}
-//			};
-//			while (visitor.setOption(subCmd, parent))
-//				;
-		} else {
-			
+		} else { // TODO add short options
 			Option<Class<?>, Member> option;
-			while (_cmdline.hasNext() && _parser.isLongOption(peek) && (option = find_option(subCmd)) != null)
+			while (hasNext() && _parser.isLongOption(peek) && (option = findOption(action)) != null)
 				option.executeAction(environ.fetch(option), next(), this);
 		}
 	}
 	
 	@SuppressWarnings("unchecked")
-	public Option<Class<?>, Member> find_option(Action<Class<?>, Member> cmd) {
+	public Option<Class<?>, Member> findOption(Action<Class<?>, Member> cmd) {
 		try {
 		cmd.startVisit(new OptionVisitor<Class<?>, Member>() {
 			public void visit(Option<Class<?>, Member> opt) {
@@ -149,7 +134,7 @@ public class Executor {
 			}
 			@Override
 			public void visit(Group<Class<?>, Member> grp) {
-				if(_parser.strictOptions())
+				if(!_parser.strictOptions())
 					visit((Composite<Class<?>, Member>) grp);
 			}
 		});
@@ -209,6 +194,10 @@ public class Executor {
 
 	public Parser getParser() {
 		return _parser;
+	}
+
+	public boolean hasNext() {
+		return _cmdline.hasNext();
 	}
 
 	public String peek() {
