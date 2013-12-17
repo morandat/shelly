@@ -24,7 +24,7 @@ public abstract class AbstractComposite<C, M> extends AbstractItem<C, M> impleme
 			cmd.accept(visitor);
 	}
 
-	public void addItem(Item<C, M> cmd) { //FIXME rename to add, and commands to items
+	public void addItem(Item<C, M> cmd) {
 		if (cmd != null)
 			commands.add(cmd);
 	}

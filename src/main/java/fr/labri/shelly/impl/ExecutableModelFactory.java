@@ -240,6 +240,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		};
 		
 		return new AbstractGroup<Class<?>, Member>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
+			private Description _description;
+
 			@Override
 			public void executeAction(Object receive, String next, Executor executor) {
 				adapter.apply(this, receive, executor);
@@ -247,7 +249,9 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 			@Override
 			public Description getDescription() {
-				return adapter.getDescription(this);
+				if (_description != null)
+					return _description;
+				return (_description = adapter.getDescription(this));
 			}
 
 			@Override
@@ -277,21 +281,25 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	public static Option<Class<?>, Member> newOption(String name, Composite<Class<?>, Member> parent, Member member, final Converter<?> converter,
 			final OptionAdapter adapter) {
 		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation(member)) {
+			private Description _description;
 			@Override
 			public void executeAction(Object receive, String next, Executor executor) {
 				Object o = converter.convert(next, executor.getCommandLine());
 				adapter.setOption(this, receive, o);
 			}
-
 			@Override
 			public Description getDescription() {
-				return adapter.getDescription(this);
-			}
+			if (_description != null)
+				return _description;
+			return (_description = adapter.getDescription(this));
+		}
 		};
 	}
 
 	public static Option<Class<?>, Member> newBooleanOption(String name, Composite<Class<?>, Member> parent, Member member, final OptionAdapter adapter) {
 		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation(member)) {
+			private Description _description;
+
 			@Override
 			public int isValid(Recognizer parser, String str, int index) {
 				return parser.isLongBooleanOptionValid(str, this, index);
@@ -304,7 +312,9 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 			@Override
 				public Description getDescription() {
-				return adapter.getDescription(this);
+				if (_description != null)
+					return _description;
+				return (_description = adapter.getDescription(this));
 			}
 		};
 	}
@@ -337,6 +347,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	public Command<Class<?>, Member> newCommand(String name, Composite<Class<?>, Member> parent, Member member, Converter<?>[] converters,
 			final CommandAdapter adapter) {
 		return new AbstractCommand<Class<?>, Member>(name, parent, member, AnnotationUtils.extractAnnotation(member)) {
+			private Description _description;
+
 			@Override
 			public void executeAction(Object receive,  String next, Executor executor) {
 				adapter.executeCommand(this, receive, executor, next);
@@ -344,9 +356,10 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 			@Override
 			public Description getDescription() {
-				return adapter.getDescription(this);
-			}
-		};
+			if (_description != null)
+				return _description;
+			return (_description = adapter.getDescription(this));
+		}		};
 	}
 	
 	public Command<Class<?>, Member> newCommand(ConverterFactory loadFactory, Composite<Class<?>, Member> parent, String name, Member member) {
