@@ -9,9 +9,9 @@ import java.util.Map;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.annotations.Param;
 
-public class ConverterFactory {
+public class Converters {
 
-	final static public fr.labri.shelly.ConverterFactory DEFAULT = new fr.labri.shelly.impl.ConverterFactory.BasicConverter();
+	final static public fr.labri.shelly.ConverterFactory DEFAULT = new fr.labri.shelly.impl.Converters.BasicConverter();
 	
 	public static class CompositeFactory implements fr.labri.shelly.ConverterFactory {
 		final fr.labri.shelly.ConverterFactory[] _factories;
@@ -159,7 +159,7 @@ public class ConverterFactory {
 	}
 	
 	public static Converter<?>[] getConverters(final fr.labri.shelly.ConverterFactory factory, Class<?> param) {
-		return new Converter[] { new fr.labri.shelly.impl.ConverterFactory() {
+		return new Converter[] { new fr.labri.shelly.impl.Converters() {
 			public Converter<?> getConverter(Class<?> type, Object context) {
 				Converter<?> converter = factory.getConverter(type, false, context);
 				return new ArrayConverter(converter);

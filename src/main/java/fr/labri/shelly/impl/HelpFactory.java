@@ -1,6 +1,7 @@
 package fr.labri.shelly.impl;
 
 import java.io.PrintStream;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -13,21 +14,22 @@ import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Option;
-import fr.labri.shelly.Shell;
 import fr.labri.shelly.Group;
+import fr.labri.shelly.Parser;
+import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
 import fr.labri.shelly.impl.ExecutableModelFactory.CommandAdapter;
 
 public class HelpFactory {
-	static public class CommandFactory extends fr.labri.shelly.impl.ExecutableModelFactory.AbstractModelFactory {
-		public CommandFactory(ExecutableModelFactory parent) {
+	static public class Factory extends fr.labri.shelly.impl.ExecutableModelFactory.AbstractModelFactory {
+		public Factory(ExecutableModelFactory parent) {
 			super(parent);
 		}
 
 		@Override
 		public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
-			final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(converterFactory, String.class);
+			final Converter<?>[] converters = fr.labri.shelly.impl.Converters.getConverters(converterFactory, String.class);
 			HelpNavigator navigator = NAVIGATOR;
 			HelpFormater formater = FORMATER;
 			HelpRenderer renderer = RENDERER;
@@ -42,19 +44,45 @@ public class HelpFactory {
 			return newCommand(name, parent, method, converters, getHelpCommandAdapter(converters, NAVIGATOR, FORMATER, RENDERER));
 		}
 		
-	}
+		@Override
+		public Option<Class<?>, Member> newOption(ConverterFactory converterFactory, final Composite<Class<?>, Member> parent, String name, final Method member) {
+			HelpFormater formater = FORMATER;
+			HelpRenderer renderer = RENDERER;
+			for(Class<?> t: member.getParameterTypes()) {
+				try {
+					formater = t.isAssignableFrom(HelpFormater.class) ? (HelpFormater) t.newInstance() : formater;
+					renderer = t.isAssignableFrom(HelpRenderer.class) ? (HelpRenderer) t.newInstance() : renderer;
+				} catch (InstantiationException | IllegalAccessException e) {
+				}
+			}
+			final HelpFormater _formater = formater;
+			final HelpRenderer _renderer = renderer;
+			return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation((AnnotatedElement)member)) {
+				@Override
+				public void executeAction(Object receive, String next, Executor executor) {
+					printHelp(ModelUtil.findRoot(parent), System.out, _formater, _renderer);
+					throw new ShellyException.EOLException();
+				}
 
+				@Override
+				public Description getDescription() {
+					return HELP_DESCRIPTION;
+				}
+			};
+		}
+	}
+	
 	public interface HelpNavigator {
 		public abstract <C, M> Triggerable<C, M> findTopic(Composite<C, M> context, Parser parser, String[] cmds);
 	}
 
 	public interface HelpRenderer {
-		public abstract <C, M> Help getHelp(Triggerable<C, M> item);
+		public abstract <C, M> HelpContext getHelp(Triggerable<C, M> item);
 	}
 
 	public interface HelpFormater {
-		String renderHelp(Help helpText);
-		void renderHelp(PrintStream out, Help helpText);
+		String renderHelp(HelpContext helpText);
+		void renderHelp(PrintStream out, HelpContext helpText);
 	}
 
 	public static void printHelp(Triggerable<?,?> item, PrintStream out) {
@@ -65,27 +93,27 @@ public class HelpFactory {
 		formater.renderHelp(out, renderer.getHelp(item));
 	}
 
-	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent) {
-		return getHelpCommand(parent, "help", fr.labri.shelly.impl.ConverterFactory.DEFAULT);
+	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> item) {
+		return getHelpCommand(item, "help", fr.labri.shelly.impl.Converters.DEFAULT);
 	}
 
-	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, ConverterFactory factory) {
-		return getHelpCommand(parent, name, factory, NAVIGATOR, FORMATER, RENDERER);
+	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> item, final String name, ConverterFactory factory) {
+		return getHelpCommand(item, name, factory, NAVIGATOR, FORMATER, RENDERER);
 	}
 
-	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name,ConverterFactory factory, final HelpNavigator navigator,
+	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> item, final String name,ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
-		final Converter<?>[] converters = (Converter<?>[]) fr.labri.shelly.impl.ConverterFactory.getConverters(factory, String.class);
-		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, null /*FIXME*/, converters, getHelpCommandAdapter(converters, navigator, formater, renderer));
+		final Converter<?>[] converters = (Converter<?>[]) fr.labri.shelly.impl.Converters.getConverters(factory, String.class);
+		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, item, null /*FIXME*/, converters, getHelpCommandAdapter(converters, navigator, formater, renderer));
 	}
 
 	private static CommandAdapter getHelpCommandAdapter(final Converter<?>[] converters, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
 		return new CommandAdapter() {
 			@Override
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, Executor executor, String next) {
-				String[] args = (String[]) fr.labri.shelly.impl.ConverterFactory.convertArray(converters, next, executor.getCommandLine())[0]; // FIXME [0]
-				Triggerable<Class<?>, Member> item = navigator.findTopic(Shell.find_group(cmd), executor.getParser(), args); // FIXME
-				printHelp(item, System.err, formater, renderer);
+				String[] args = (String[]) fr.labri.shelly.impl.Converters.convertArray(converters, next, executor.getCommandLine())[0]; // FIXME [0]
+				Triggerable<Class<?>, Member> item = navigator.findTopic(ModelUtil.findGroup(cmd), executor.getParser(), args); // FIXME
+				printHelp(item, System.out, formater, renderer);
 			}
 
 			@Override
@@ -121,7 +149,7 @@ public class HelpFactory {
 		}
 
 		@Override
-		Integer makeLayout(Help helpText) {
+		Integer makeLayout(HelpContext helpText) {
 			int i = 0;
 			for (String[] l : helpText)
 				if (l.length == 2) {
@@ -134,8 +162,8 @@ public class HelpFactory {
 
 	static final HelpRenderer RENDERER = new HelpRenderer() {
 		@Override
-		public <C, M> Help getHelp(Triggerable<C, M> item) {
-			final Help help = new Help();
+		public <C, M> HelpContext getHelp(Triggerable<C, M> item) {
+			final HelpContext help = new HelpContext();
 			item.accept(new Visitor<C, M>() {
 				public void visit(Group<C, M> grp) {
 					Description d =  grp.getDescription();
@@ -187,7 +215,7 @@ public class HelpFactory {
 
 	static abstract class SimpleFormater<L> implements HelpFormater {
 		@Override
-		public String renderHelp(Help helpText) {
+		public String renderHelp(HelpContext helpText) {
 			L layout = makeLayout(helpText);
 			StringBuilder sb = new StringBuilder();
 			for (String[] l : helpText)
@@ -196,13 +224,13 @@ public class HelpFactory {
 		}
 
 		@Override
-		public void renderHelp(PrintStream out, Help helpText) {
+		public void renderHelp(PrintStream out, HelpContext helpText) {
 			L layout = makeLayout(helpText);
 			for (String[] l : helpText)
 				out.print(format(l, layout));
 		}
 
-		abstract L makeLayout(Help helpText);
+		abstract L makeLayout(HelpContext helpText);
 
 		public abstract String format(String helpText[], L layout);
 	}
@@ -211,11 +239,11 @@ public class HelpFactory {
 		@Override
 		public <C,M> Triggerable<C, M> findTopic(Composite<C, M> context, Parser parser, String[] cmds) {
 			if (cmds.length == 0) {
-				return Shell.find_group(context);
+				return ModelUtil.findGroup(context);
 			} else {
-				Action<C, M> parent = Shell.find_group(context);
+				Action<C, M> parent = ModelUtil.findGroup(context);
 				for (int i = 0; i < cmds.length; i++) {
-					Action<C, M> cmd = Shell.findAction(parent, parser, cmds[i]);
+					Action<C, M> cmd = ModelUtil.findAction(parent, parser, cmds[i]);
 					if (cmd == null) {
 						System.out.println("No topic " + cmds[i]);
 						break;
@@ -245,7 +273,7 @@ public class HelpFactory {
 		}
 	};
 	
-	static class Help implements Iterable<String[]> {
+	static class HelpContext implements Iterable<String[]> {
 		static final String BLANK_LINE = "";
 		
 		ArrayList<String[]> help = new ArrayList<>();

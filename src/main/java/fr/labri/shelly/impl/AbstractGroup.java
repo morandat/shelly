@@ -4,6 +4,7 @@ import java.lang.annotation.Annotation;
 
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Group;
+import fr.labri.shelly.Parser;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.Visitor;
 

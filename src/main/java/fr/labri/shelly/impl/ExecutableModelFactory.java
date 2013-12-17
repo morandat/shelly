@@ -6,7 +6,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.Arrays;
+import java.lang.reflect.Modifier;
 
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
@@ -17,6 +17,8 @@ import fr.labri.shelly.Description;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
+import fr.labri.shelly.Parser;
+import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.impl.AnnotationUtils.ReflectValue;
 
@@ -60,7 +62,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 		static private class ExecutableBuilder extends ModelBuilder.Builder<Class<?>, Member> {
 			ExecutableModelFactory _parentFactory = ExecutableModelFactory.EXECUTABLE_MODEL;
-			ConverterFactory _parentConverter = fr.labri.shelly.impl.ConverterFactory.DEFAULT;
+			ConverterFactory _parentConverter = fr.labri.shelly.impl.Converters.DEFAULT;
 
 			@Override
 			public void visit(Composite<Class<?>, Member> optionGroup) {
@@ -76,7 +78,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 					public void visit(Class<?> c) {
 						if (c.isAnnotationPresent(GROUP_CLASS)) {
 							grp.addItem(createGroup(grp, c.getAnnotation(GROUP_CLASS), c));
-						} else if (c.isAnnotationPresent(CONTEXT_CLASS)) {
+						}
+						if (c.isAnnotationPresent(CONTEXT_CLASS)) {
 							grp.addItem(createContext(grp, c.getAnnotation(CONTEXT_CLASS), c));
 						}
 					}
@@ -90,12 +93,11 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 					public void visit(Method m) {
 						if (m.isAnnotationPresent(CMD_CLASS)) {
 							grp.addItem(createCommand(m.getAnnotation(CMD_CLASS), m, grp));
-						} else if (m.isAnnotationPresent(OPT_CLASS)) {
+						} 
+						if (m.isAnnotationPresent(OPT_CLASS)) {
 							grp.addItem(createOption(m.getAnnotation(OPT_CLASS), m, grp));
 						}
 					}
-
-
 				}.visit_all(clazz);
 			}
 			
@@ -104,26 +106,22 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 
 			public Context<Class<?>, Member> createContext(Composite<Class<?>, Member> parent, fr.labri.shelly.annotations.Context annotation, Class<?> clazz) {
-				if ((parent == null) != (clazz.getEnclosingClass() == null))
-					throw new RuntimeException("Cannot create option group when not starting at top level");
+				if ((parent == null) && (clazz.isMemberClass()))
+					throw new RuntimeException("Cannot create context when not starting at top level");
 				return super.createContext(parent, annotation, clazz);
 			}
 
-			public Group<Class<?>, Member> createGroup(Composite<Class<?>, Member> parent, fr.labri.shelly.annotations.Group annotation, Class<?> clazz) {
-				if ((parent == null) != (clazz.getEnclosingClass() == null))
-					throw new RuntimeException("Cannot create option group when not starting at top level"); // FIXME
-				return super.createGroup(parent, annotation, clazz);
-			}
-			
 			protected Option<Class<?>, Member> createOption(fr.labri.shelly.annotations.Option annotation, Member member, Composite<Class<?>, Member> parent) {
 				if (member instanceof Constructor<?>)
-					throw new RuntimeException("Cannot create option on constructors: "+ member);
+					throw new ShellyException("Cannot create option on constructors: "+ member);
+				if (member instanceof Field && Modifier.isFinal(member.getModifiers()))
+					throw new ShellyException("Cannot create option on final fields");
 				return super.createOption(annotation, member, parent);
 			}
 
 			protected Command<Class<?>, Member> createCommand(fr.labri.shelly.annotations.Command annotation, Member method, Composite<Class<?>, Member> parent) {
 				if (!(method instanceof Method))
-					throw new RuntimeException("Command are restricted to methods: "+ method);
+					throw new ShellyException("Command are restricted to methods: "+ method);
 				return super.createCommand(annotation, method, parent);
 			}
 
@@ -132,7 +130,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 //				if (classes.length < 1 || BasicConverter.class.equals(classes[0]))
 				if(classes == null)
 					return _parentConverter;
-				return fr.labri.shelly.impl.ConverterFactory.getComposite(_parentConverter, classes);
+				return fr.labri.shelly.impl.Converters.getComposite(_parentConverter, classes);
 			}
 
 			@Override
@@ -147,7 +145,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 	
 	public interface OptionAdapter extends TriggerableAdapter {
-		abstract Object setOption(Option<Class<?>, Member> opt, Object receive, Object value);
+		abstract void setOption(Option<Class<?>, Member> opt, Object receive, Object value);
 	}
 	
 	public interface CommandAdapter extends ActionAdapter {
@@ -169,19 +167,16 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 
 	abstract static class CompositeAdapter {
-		final Field _superThis;
 		final Constructor<?> _ctor;
-
+		final boolean isEnclosed;
 		CompositeAdapter(Class<?> clazz) {
 			try {
 				Constructor<?> ctor;
-				if (clazz.getEnclosingClass() != null) {
+				isEnclosed = clazz.isMemberClass() && !Modifier.isStatic(clazz.getModifiers());
+				if (isEnclosed) {
 					ctor = clazz.getConstructor(clazz.getEnclosingClass());
-					_superThis = getSuperThisField(clazz);
-					_superThis.setAccessible(true);
 				} else {
 					ctor = clazz.getConstructor();
-					_superThis = null;
 				}
 				_ctor = ctor;
 			} catch (NoSuchMethodException | SecurityException e) {
@@ -189,24 +184,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 		}
 
-		public Object instantiateObject(Object parent) {
-			return ExecutableModelFactory.newInstance(_superThis != null, _ctor, parent);
-		}
-
-		public Object getEnclosingObject(Object obj) {
-			try {
-				return _superThis.get(obj);
-			} catch (IllegalArgumentException | IllegalAccessException e) {
-				throw new RuntimeException(e);
-			}
-		}
-
-		public static Field getSuperThisField(Class<?> c) {
-			Field[] fields = c.getDeclaredFields();
-			for (Field f : fields)
-				if (f.getName().startsWith("this$"))
-					return f;
-			throw new RuntimeException("This class has no enclosing class.\n" + Arrays.toString(fields));
+		public void instantiateObject(Composite<Class<?>, Member> item, Environ environ) {
+			newInstance(item, _ctor, environ);
 		}
 	}
 
@@ -220,13 +199,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			super(clazz);
 		}
 		
-		public abstract Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text);
+		public abstract void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text);
 
-		@Override
-		public Object instantiateObject(Object parent) {
-			return ExecutableModelFactory.newInstance(_superThis != null, _ctor, parent);
-		}
-		
 		public Object apply(AbstractGroup<Class<?>, Member> grp, Object receive, Executor executor) {
 			return receive;
 		}
@@ -235,20 +209,20 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	public Context<Class<?>, Member> newContext(String name, Composite<Class<?>, Member> parent, Class<?> clazz, final CompositeAdapter adapter) {
 		return new AbstractContext<Class<?>, Member>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
 			@Override
-			public Object instantiateObject(Object parent) {
-				return adapter.instantiateObject(parent);
+			public void instantiateObject(Environ environ) {
+				adapter.instantiateObject(this, environ);
 			}
 
 			@Override
-			public Object getEnclosingObject(Object obj) {
-				return adapter.getEnclosingObject(obj);
+			public boolean isEnclosed() {
+				return ExecutableModelFactory.isEnclosed(_clazz);
 			}
 		};
 	}
 
 	@Override
 	public Context<Class<?>, Member> newContext(String name, Composite<Class<?>, Member> parent, Class<?> clazz) {
-		return newContext(name, parent, clazz, new CompositeAdapter(clazz){
+		return newContext(name, parent, clazz, new ContextAdapter(clazz) {
 		});
 	}
 
@@ -256,8 +230,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	public Group<Class<?>, Member> newGroup(String name, Composite<Class<?>, Member> parent, final Class<?> clazz) {
 		final GroupAdapter adapter = new GroupAdapter(clazz) {
 			@Override
-			public Object executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
-				return grp;
+			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
 			}
 
 			@Override
@@ -273,28 +246,28 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 
 			@Override
-			public Object getEnclosingObject(Object parent) {
-				return adapter.getEnclosingObject(parent);
-			}
-
-			@Override
 			public Description getDescription() {
 				return adapter.getDescription(this);
 			}
 
 			@Override
-			public Object instantiateObject(Object parent) {
-				return adapter.instantiateObject(parent);
+			public void instantiateObject(Environ environ) {
+				adapter.instantiateObject(this, environ);
+			}
+
+			@Override
+			public boolean isEnclosed() {
+				return ExecutableModelFactory.isEnclosed(_clazz);
 			}
 		};
 	}
 
-	static Object newInstance(boolean enclosed, Constructor<?> ctor, Object parent) {
+	static void newInstance(Composite<Class<?>, Member> parent, Constructor<?> ctor, Environ environ) {
 		try {
-			if (enclosed) {
-				return ctor.newInstance(parent);
+			if (parent.isEnclosed()) {
+				environ.push(parent, ctor.newInstance(environ.getLast()));
 			} else {
-				return ctor.newInstance();
+				environ.push(parent, ctor.newInstance());
 			}
 		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			throw new RuntimeException(e);
@@ -381,11 +354,11 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 	
 	public Command<Class<?>, Member> newCommand(ConverterFactory loadFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
-		final Converter<?>[] converters = fr.labri.shelly.impl.ConverterFactory.getConverters(loadFactory, method.getParameterTypes(), method.getParameterAnnotations());
+		final Converter<?>[] converters = fr.labri.shelly.impl.Converters.getConverters(loadFactory, method.getParameterTypes(), method.getParameterAnnotations());
 		return newCommand(name, parent, method, converters, new CommandAdapter() {
 			@Override
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
-				Object[] arguments = fr.labri.shelly.impl.ConverterFactory.convertArray(converters, text, executor.getCommandLine());
+				Object[] arguments = fr.labri.shelly.impl.Converters.convertArray(converters, text, executor.getCommandLine());
 				try {
 					method.invoke(grp, arguments);
 				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
@@ -403,10 +376,9 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	static OptionAdapter getFieldAdapter(final Field field) {
 		return new OptionAdapter() {
 			@Override
-			public Object setOption(Option<Class<?>, Member> opt, Object receive, Object value) {
+			public void setOption(Option<Class<?>, Member> opt, Object receive, Object value) {
 				try {
 					field.set(receive, value);
-					return value;
 				} catch (IllegalArgumentException | IllegalAccessException e) {
 					throw new RuntimeException(e);
 				}
@@ -422,10 +394,9 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	static OptionAdapter getAccessorAdapter(final Method method) {
 		return new OptionAdapter() { // FIXME not robust
 			@Override
-			public Object setOption(Option<Class<?>, Member> opt, Object receive, Object value) {
+			public void setOption(Option<Class<?>, Member> opt, Object receive, Object value) {
 				try {
 					method.invoke(receive, value);
-					return value;
 				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
 					throw new RuntimeException(e);
 				}
@@ -488,6 +459,10 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 				| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 			return EXECUTABLE_MODEL;
 		}
+	}
+	
+	static boolean isEnclosed(Class<?> clazz) {
+		return clazz.isMemberClass() && !Modifier.isStatic(clazz.getModifiers());
 	}
 	
 	public final static ReflectValue<String> SUMMARY = new ReflectValue<String>("summary", fr.labri.shelly.annotations.Option.NO_NAME);

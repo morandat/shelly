@@ -10,8 +10,10 @@ import fr.labri.shelly.annotations.Option;
 
 @Group
 public class CpOptions {
-	@Option public boolean force;
-	@Option public Boolean verbose;
+	
+	// This is an simple example of a command line 
+	@Option(flags = "fi") public boolean force;
+	@Option(flags = "vq") public Boolean verbose;
 	
 	@Default @Ignore @Command public void cp(String f1, String fs[]) {
 		System.out.printf("Copying %s%s -> %s\n", force ? "force " :"",  f1, Arrays.toString(fs));

@@ -7,10 +7,11 @@ import java.util.Arrays;
 import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.ConverterFactory;
-import fr.labri.shelly.impl.ConverterFactory.SimpleConverter;
+import fr.labri.shelly.impl.Converters.SimpleConverter;
 import fr.labri.shelly.impl.HelpFactory;
-import fr.labri.shelly.impl.ParserFactory;
+import fr.labri.shelly.impl.ModelUtil;
 import fr.labri.shelly.Converter;
+import fr.labri.shelly.Parser;
 import fr.labri.shelly.Shell;
 
 @Group(name = "git")
@@ -39,7 +40,7 @@ public class SimpleProject {
 		} else {
 			fr.labri.shelly.Action<Class<?>, Member> parent = shell.getRoot();
 			for (int i = 0; i < cmds.length; i++) {
-				fr.labri.shelly.Action<Class<?>, Member> cmd = Shell.findAction(parent, ParserFactory.GNUNonStrict, cmds[i]);
+				fr.labri.shelly.Action<Class<?>, Member> cmd = ModelUtil.findAction(parent, Parser.GNUNonStrict, cmds[i]);
 				if (cmd == null) {
 					System.out.println("No topic " + cmds[i]);
 					break;
@@ -54,10 +55,10 @@ public class SimpleProject {
 	@Command(summary = "short way to go")
 	@Description("A more long way to go !")
 	public void newoldhelp(String[] cmds) {
-		HelpFactory.NAVIGATOR.findTopic(Shell.createShell(SimpleProject.class).getRoot(), ParserFactory.GNUNonStrict, cmds);
+		HelpFactory.NAVIGATOR.findTopic(Shell.createShell(SimpleProject.class).getRoot(), Parser.GNUNonStrict, cmds);
 	}
 
-	@Command(factory = HelpFactory.CommandFactory.class)
+	@Command(factory = HelpFactory.Factory.class)
 	public void help() {
 		// This method is just a hook for annotation, it won't be called
 		// Parameters type are inspected to determine help components
@@ -164,5 +165,13 @@ public class SimpleProject {
 		System.err.println("erreur " + e);
 		for (String c : cmds)
 			System.err.println(c);
+	}
+	
+	public static void main(String[] args) throws Exception {
+		Shell shell = Shell.createShell(SimpleProject.class);
+		if (args.length == 0)
+			shell.loop(System.in, Parser.GNUNonStrict);
+		else
+			shell.parseCommandLine(args, Parser.GNUNonStrict);
 	}
 }

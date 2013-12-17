@@ -10,23 +10,28 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
+import fr.labri.shelly.ShellyException.EOLException;
 import fr.labri.shelly.impl.ExecutableModelFactory;
-import fr.labri.shelly.impl.Parser;
-import fr.labri.shelly.impl.ParserFactory;
+import fr.labri.shelly.impl.ModelUtil;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelBuilder;
 import fr.labri.shelly.impl.Executor;
-import fr.labri.shelly.impl.Visitor;
 import fr.labri.shelly.impl.PeekIterator;
-import fr.labri.shelly.impl.Visitor.FoundCommand;
-import fr.labri.shelly.impl.Visitor.OptionVisitor;
-import fr.labri.shelly.impl.Visitor.FoundOption;
 
 public class Shell {
-	Group<Class<?>, Member> grp;
+	Group<Class<?>, Member> _grp;
+
+
+	interface ShellAdapter {
+		String prompt();
+		Iterator<String> parseLine(String line);
+		void catchBlock(Exception e) throws Exception;
+		String readLine() throws IOException;
+		void printResult(Object result) throws IOException;
+	}
 
 	private Shell(Group<Class<?>, Member> createGroup) {
-		grp = createGroup;
+		_grp = createGroup;
 	}
 
 	static public Shell createShell(ModelBuilder<Class<?>, Member> factory, Class<?> clazz) {
@@ -38,7 +43,7 @@ public class Shell {
 	}
 
 	public Group<Class<?>, Member> getRoot() {
-		return grp;
+		return _grp;
 	}
 
 	void addItem(Command<Class<?>, Member> cmd) {
@@ -50,29 +55,29 @@ public class Shell {
 	}
 
 
-	final public void parseCommandLine(String[] cmds) {
-		parseCommandLine(cmds, ParserFactory.Java);
+	final public void parseCommandLine(String[] args) {
+		parseCommandLine(args, Parser.Java);
 	}
 	
-	final public void parseCommandLine(String[] cmds, Parser parser) {
-		parseCommandLine(Arrays.asList(cmds), parser);
+	final public void parseCommandLine(String[] args, Parser parser) {
+		parseCommandLine(Arrays.asList(args), parser);
 	}
 
-	final public void parseCommandLine(Collection<String> cmds, Parser parser) {
-		parse(cmds.iterator(), parser);
+	final public void parseCommandLine(Collection<String> args, Parser parser) {
+		parseCommandLine(args.iterator(), parser);
 	}
 	
-	final public void parse(Iterator<String> cmdLine, Executor executor) {
-		executor.execute(new PeekIterator<>(cmdLine), getRoot());
+	final public void parseCommandLine(Iterator<String> args, Executor executor) {
+		executor.execute(new PeekIterator<>(args), getRoot());
 	}
-	final public void parse(Iterator<String> cmdLine, Parser parser) {
-		parse(cmdLine, new Executor(parser));
+	final public void parseCommandLine(Iterator<String> args, Parser parser) {
+		parseCommandLine(args, new Executor(parser));
 	}
 
-	public void loop(InputStream inputStream, Parser model) throws Exception {
+	public void loop(InputStream inputStream, Parser parser) throws Exception {
 		final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
-		loop(inputStream, model, new ShellAdapter() {
-			String prompt = String.format("%s> ", grp.getID());
+		loop(inputStream, parser, new ShellAdapter() {
+			String prompt = String.format("%s> ", _grp.getID());
 
 			@Override
 			public String prompt() {
@@ -86,6 +91,7 @@ public class Shell {
 
 			@Override
 			public void catchBlock(Exception e) throws Exception {
+				if(e instanceof EOLException) return;
 				System.err.println("Error found " + e.getCause());
 				e.printStackTrace(System.err);
 			}
@@ -112,7 +118,7 @@ public class Shell {
 			if (line != null)
 				try {
 					// Object result =
-					parse(adapter.parseLine(line), model);
+					parseCommandLine(adapter.parseLine(line), model);
 					// adapter.printResult(result);
 				} catch (RuntimeException e) {
 					adapter.catchBlock(e);
@@ -122,81 +128,11 @@ public class Shell {
 		} while (line != null);
 	}
 
-	public Action<Class<?>, Member> find_command(Parser parser, String cmd) {
-		return findAction(getRoot(), parser, cmd);
+	public Action<Class<?>, Member> findAction(Parser parser, String cmd) {
+		return ModelUtil.findAction(getRoot(), parser, cmd);
 	}
 
-	public Option<Class<?>, Member> find_option(Parser parser, String cmd) {
-		return find_option(getRoot(), parser, cmd);
-	}
-
-	public static <C, M> Action<C, M> findAction(Action<C, M> start, Parser parser, final String cmd) {
-		if (start instanceof Group) {
-			return findAction((Group<C, M>) start, parser, cmd);
-		}
-		return null;
-	}
-	
-	@SuppressWarnings("unchecked")
-	public static <C,M> Action<C, M> findAction(Group<C, M> start, final Parser parser, final String cmd) {
-		try {
-			Visitor<C, M> v = new Visitor.ActionVisitor<C, M>() {
-				@Override
-				public void visit(Action<C, M> grp) {
-					if (parser.isActionValid(cmd, grp)) {
-						throw new Visitor.FoundCommand(grp);
-					}
-				}
-			};
-			start.startVisit(v);
-		} catch (Visitor.FoundCommand e) {
-			return (Action<C, M>) e.cmd;
-		}
-		return null;
-	}
-	
-	@SuppressWarnings("unchecked")
-	public static <C,M> Group<C, M> find_group(Item<C, M> start) {
-		try {
-		start.accept(new Visitor<C, M>() {
-			@Override
-			public void visit(Item<C, M> i) {
-				visit_parent(i);
-			}
-			@Override
-			public void visit(Group<C, M> cmdGroup) {
-				throw new FoundCommand(cmdGroup);
-			}
-		});
-		} catch (FoundCommand e) {
-			return (Group<C, M>)e.cmd;
-		}
-		return null; 
-	}
-	
-	@SuppressWarnings("unchecked")
-	static public <C,M> Option<C, M> find_option(Action<C, M> start, final Parser parser, final String cmd) {
-		try {
-			if (start instanceof Group) {
-				OptionVisitor<C, M> v = new OptionVisitor<C, M>() {
-					public void visit(Option<C, M> option) {
-						if (parser.isLongOptionValid(cmd, option))
-							throw new FoundOption(option);
-					};
-				};
-				v.visit_options(start);
-			}
-		} catch (FoundOption e) {
-			return (Option<C, M>) e.opt;
-		}
-		return null;
-	}
-
-	interface ShellAdapter {
-		String prompt();
-		Iterator<String> parseLine(String line);
-		void catchBlock(Exception e) throws Exception;
-		String readLine() throws IOException;
-		void printResult(Object result) throws IOException;
+	public Option<Class<?>, Member> findOption(Parser parser, String cmd) {
+		return ModelUtil.findOption(getRoot(), parser, cmd);
 	}
 }

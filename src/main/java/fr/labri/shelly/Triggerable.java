@@ -1,7 +1,6 @@
 package fr.labri.shelly;
 
 import fr.labri.shelly.impl.Executor;
-import fr.labri.shelly.impl.Parser;
 
 
 public interface Triggerable<C, M> extends Item<C, M> {

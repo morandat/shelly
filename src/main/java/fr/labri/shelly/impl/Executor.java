@@ -10,11 +10,13 @@ import fr.labri.shelly.Composite;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Item;
+import fr.labri.shelly.Parser;
 import fr.labri.shelly.annotations.Default;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
 import fr.labri.shelly.impl.Visitor.ActionVisitor;
 import fr.labri.shelly.impl.Visitor.FoundCommand;
+import fr.labri.shelly.impl.Visitor.FoundOption;
 import fr.labri.shelly.impl.Visitor.OptionVisitor;
 
 public class Executor {
@@ -27,34 +29,34 @@ public class Executor {
 	}
 	
 	public void execute(PeekIterator<String> cmdline, Group<Class<?>, Member> start){
-		execute(cmdline, start, null);
+		execute(cmdline, start, new Environ());
 	}
 	
-	public void execute(PeekIterator<String> cmdline, Group<Class<?>, Member> start, Object parent){
+	public void execute(PeekIterator<String> cmdline, Group<Class<?>, Member> start, Environ environ){
 		_cmdline = cmdline;
 		Action<Class<?>, Member> cmd = start;
 		Action<Class<?>, Member> last = cmd;
 		
-		Object ctx = start.instantiateObject(parent);
-		fillOptions(start, ctx);
+		start.instantiateObject(environ);
+		fillOptions(start, environ);
 		while (cmd != null && _cmdline.hasNext())
 			if ((cmd = findAction(last = cmd, _parser, peek())) != null)
-				ctx = executeAction(next(), last = cmd, ctx);
+				executeAction(next(), last = cmd, environ);
 		
-		finalize(last, ctx);
+		finalize(last, environ);
 	}
 
-	protected void finalize(Action<Class<?>, Member> last, Object ctx) {
+	protected void finalize(Action<Class<?>, Member> last, Environ environ) {
 		if (last instanceof Group)
-			executeDefault((Group<Class<?>, Member>) last, ctx);
+			executeDefault((Group<Class<?>, Member>) last, environ);
 	}
 	
-	public void executeDefault(Group<Class<?>, Member> subCmd, Object parent) {
+	public void executeDefault(Group<Class<?>, Member> subCmd, Environ environ) {
 		Action<Class<?>, Member> dflt = getDefault(subCmd);
 		if (dflt != null)
-			executeAction(null, dflt, parent);
+			executeAction(null, dflt, environ);
 		else
-			error(subCmd, parent);
+			error(subCmd, environ);
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -75,36 +77,35 @@ public class Executor {
 		return null;
 	}
 
-	public void error(Composite<Class<?>, Member> grp, Object receiv) {
+	public void error(Composite<Class<?>, Member> grp, Environ environ) {
 		while(grp != null) {
-			for(Method m : receiv.getClass().getDeclaredMethods())
+			for(Method m : grp.getAssociatedElement().getDeclaredMethods())
 				if(m.isAnnotationPresent(Error.class)) {
-					callError(m, receiv);
+					callError(m, environ);
 					return;
-				} else
-					if(grp.getParent() != null)
-						receiv = grp.getEnclosingObject(receiv);
+				}
+			environ.pop();
+			grp = grp.getParent();
 		}
 	}
 
-	public void callError(Method found, Object parent) {
+	public void callError(Method found, Environ environ) {
 		ArrayList<String> arr = new ArrayList<String>();
 		while (_cmdline.hasNext())
 			arr.add(next());
 		try {
-			found.invoke(parent, new RuntimeException("Command not found"), arr.toArray(new String[arr.size()]));
+			found.invoke(environ.getLast(), new RuntimeException("Command not found"), arr.toArray(new String[arr.size()]));
 		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 		}
 	}
 
-	public Object executeAction(String txt, Action<Class<?>, Member> cmd, Object parent) {
-		parent = createContext(cmd, parent);
-		fillOptions(cmd, parent);
-		cmd.executeAction(parent, txt, this);
-		return parent;
+	public void executeAction(String txt, Action<Class<?>, Member> cmd, Environ environ) {
+		createContext(cmd, environ);
+		fillOptions(cmd, environ);
+		cmd.executeAction(environ.getLast(), txt, this);
 	}
 
-	private void fillOptions(Action<Class<?>, Member> subCmd, Object parent) {
+	private void fillOptions(Action<Class<?>, Member> subCmd, Environ environ) {
 		if(!_cmdline.hasNext()) return;
 		
 		String peek = peek();
@@ -129,22 +130,33 @@ public class Executor {
 //			while (visitor.setOption(subCmd, parent))
 //				;
 		} else {
-			OptionSetterVisitor visitor = new OptionSetterVisitor() {
-				public void visit(Option<Class<?>, Member> opt) {
-					if (!_mode.isIgnored(opt))
-						if (_parser.isLongOptionValid(peek(), opt)) {
-							throw new FoundOption(opt);
-						}
-				}
-
-				@Override
-				public void setValue(Option<?, ?> opt) {
-					opt.executeAction(receive, next(), Executor.this);					
-				}
-			};
-			while (_cmdline.hasNext() && _parser.isLongOption(peek) && visitor.setOption(subCmd, parent))
-			;
+			
+			Option<Class<?>, Member> option;
+			while (_cmdline.hasNext() && _parser.isLongOption(peek) && (option = find_option(subCmd)) != null)
+				option.executeAction(environ.fetch(option), next(), this);
 		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	public Option<Class<?>, Member> find_option(Action<Class<?>, Member> cmd) {
+		try {
+		cmd.startVisit(new OptionVisitor<Class<?>, Member>() {
+			public void visit(Option<Class<?>, Member> opt) {
+				if (!_mode.isIgnored(opt))
+					if (_parser.isLongOptionValid(peek(), opt)) {
+						throw new FoundOption(opt);
+					}
+			}
+			@Override
+			public void visit(Group<Class<?>, Member> grp) {
+				if(_parser.strictOptions())
+					visit((Composite<Class<?>, Member>) grp);
+			}
+		});
+		} catch (FoundOption e) {
+			return (Option<Class<?>, Member>) e.opt;
+		}
+		return null;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -166,59 +178,14 @@ public class Executor {
 		return null;
 	}
 
-	abstract class OptionSetterVisitor extends OptionVisitor<Class<?>, Member> {
-		Object receive;
-
-		@Override
-		public void visit(Item<Class<?>, Member> item) {
-			receive = null;
-		}
-
-		abstract public void visit(Option<Class<?>, Member> opt);
-
-		@Override
-		public void visit(Group<Class<?>, Member> grp) {
-			if(_parser.strictOptions())
-				visit((Composite<Class<?>, Member>) grp);
-		}
-
-		@Override
-		public void visit(Composite<Class<?>, Member> grp) {
-			visit_options(grp);
-
-			Composite<Class<?>, Member> p = grp.getParent();
-			if (p != null) {
-				receive = grp.getEnclosingObject(receive);
-				p.accept(this);
-			}
-		}
-
-		public boolean setOption(Action<Class<?>, Member> cmd, Object group) {
-			receive = group;
-			try {
-				visit_options(cmd);
-				return false;
-			} catch (FoundOption e) {
-				if (e.opt == null)
-					return false;
-				setValue(e.opt);
-				return true;
-			}
-		}
-
-		abstract public void setValue(Option<?, ?> opt);
-	}
-	
-	private Object createContext(Action<Class<?>, Member> cmd, Object parent) {
-		InstVisitor v = new InstVisitor(parent);
-		cmd.startVisit(v);
-		return v.group;
+	private void createContext(Action<Class<?>, Member> cmd, Environ environ) {
+		cmd.startVisit(new InstVisitor(environ));
 	}
 
 	static class InstVisitor extends fr.labri.shelly.impl.Visitor.ParentVisitor<Class<?>, Member> {
-		private Object group;
-		public InstVisitor(Object parent) {
-			group = parent;
+		private Environ _environ;
+		public InstVisitor(Environ environ) {
+			_environ = environ;
 		}
 
 		@Override
@@ -228,7 +195,7 @@ public class Executor {
 		@Override
 		public void visit(Composite<Class<?>, Member> ctx) {
 			visit((Item<Class<?>, Member>)ctx);
-			group = ctx.instantiateObject(group);
+			ctx.instantiateObject(_environ);
 		}
 
 		public void startVisit(Group<Class<?>, Member> cmdGroup) {

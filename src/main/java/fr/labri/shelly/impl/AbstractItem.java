@@ -22,11 +22,6 @@ public abstract class AbstractItem<C, M> implements Item<C, M> {
 	}
 
 	@Override
-	public Composite<C, M> getParent() {
-		return _parent;
-	}
-	
-	@Override
 	public <A extends Annotation> A getAnnotation(Class<A> a) {
 		return AnnotationUtils.getAnnotation(_annotations, a);
 	}
@@ -34,6 +29,11 @@ public abstract class AbstractItem<C, M> implements Item<C, M> {
 	@Override
 	public boolean hasAnnotation(Class<? extends Annotation> a) {
 		return getAnnotation(a) != null;
+	}
+	
+	@Override
+	public Composite<C, M> getParent() {
+		return _parent;
 	}
 	
 	static public <C,M> String getFullName(Item<C, M> item) {

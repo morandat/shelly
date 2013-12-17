@@ -2,15 +2,16 @@ package fr.labri.shelly.impl;
 
 import fr.labri.shelly.Action;
 import fr.labri.shelly.Option;
+import fr.labri.shelly.Parser;
 
 public class ParserFactory {
 
-	static abstract class AbstractExecutorModel implements Parser {
-		boolean stictOptions = false;
-		String optionStopper = "--";
-		String longOptionPrefix = "--";
-		String shortOptionPrefix = "";
-		String no_flag = "no-";
+	public static abstract class AbstractParser implements Parser {
+		protected boolean stictOptions = false;
+		protected String optionStopper = "--";
+		protected String longOptionPrefix = "--";
+		protected String shortOptionPrefix = "";
+		protected String no_flag = "no-";
 
 		@Override
 		public boolean stopOptionParsing(String cmd) {
@@ -60,22 +61,4 @@ public class ParserFactory {
 			return index = StringUtils.startWith(str, option.getID(), index);
 		}
 	}
-	
-	public static final Parser GNUNonStrict = new AbstractExecutorModel() {
-
-	};
-	public static final Parser GNUStrict = new AbstractExecutorModel() {
-		// TODO maybe rename BSD
-		{
-			stictOptions = true;
-		}
-	};
-	public static Parser Java = new AbstractExecutorModel() {
-		{
-			longOptionPrefix = "-";
-			shortOptionPrefix = null;
-			stictOptions = true;
-		}
-	};
-	
 }

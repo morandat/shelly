@@ -13,8 +13,10 @@ import fr.labri.shelly.impl.ExecutableModelFactory;
 public @interface Option {
 	String name() default NO_NAME;
 	String summary() default NO_NAME;
-	Class<? extends ConverterFactory>[] converter() default fr.labri.shelly.impl.ConverterFactory.BasicConverter.class;
+	Class<? extends ConverterFactory>[] converter() default fr.labri.shelly.impl.Converters.BasicConverter.class;
 	Class<? extends ExecutableModelFactory> factory() default ExecutableModelFactory.class;
 	
 	public static final String NO_NAME = "";
+
+	String flags() default ""; // By default there is no flags (short name) associated with and option 
 }

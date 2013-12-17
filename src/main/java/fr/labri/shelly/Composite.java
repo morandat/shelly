@@ -1,5 +1,7 @@
 package fr.labri.shelly;
 
+import fr.labri.shelly.impl.Environ;
+
 
 public interface Composite<C, M> extends Item<C, M> {
 	
@@ -9,6 +11,6 @@ public interface Composite<C, M> extends Item<C, M> {
 	public abstract Iterable<Item<C, M>> getItems();
 	public abstract void visit_all(Visitor<C, M> visitor);
 
-	public abstract Object instantiateObject(Object parent);
-	public abstract Object getEnclosingObject(Object obj);
+	public abstract boolean isEnclosed();
+	public abstract void instantiateObject(Environ environ);
 }

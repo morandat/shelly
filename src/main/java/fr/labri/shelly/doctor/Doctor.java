@@ -300,9 +300,12 @@ public class Doctor extends AbstractProcessor {
 			protected Option<TypeElement, Element> createOption(fr.labri.shelly.annotations.Option annotation, Element member,
 					Composite<TypeElement, Element> parent) {
 				checkType(member, ElementKind.FIELD, ElementKind.METHOD);
-				if(ElementKind.METHOD == member.getKind())
-					if(((ExecutableElement)member).getParameters().size() != 1)
-						messager.printMessage(Kind.ERROR, "Option on method is only allowed for accessors, i.e., exactly one parameter", member);
+				if(ElementKind.METHOD == member.getKind()) {
+					if(((ExecutableElement)member).getParameters().size() != 1) {
+						messager.printMessage(Kind.WARNING, "Option on method is only allowed for accessors, i.e., exactly one parameter", member); // FIXME should be an ERROR when there is no factory set
+					}
+				} else  if (member.getModifiers().contains(Modifier.FINAL))
+					messager.printMessage(Kind.ERROR, "Final fields can't be annotated by @Option", member);
 				checkAccessibility(member);
 				return super.createOption(annotation, member, parent);
 			}
@@ -314,32 +317,6 @@ public class Doctor extends AbstractProcessor {
 				return super.createCommand(annotation, member, parent);
 			}
 			
-			void checkType(Element e, ElementKind... kinds) {
-				ElementKind k = e.getKind();
-				for(ElementKind ks: kinds)
-					if(ks == k)
-						return;
-				messager.printMessage(Kind.ERROR, String.format("Shelly item is not allowed on this kind of element %s. Allowed on %s", k, Arrays.toString(kinds)), e);
-			}
-			
-			public boolean checkSignature(TypeMirror[] expected, List<? extends VariableElement> actual) {
-				if(expected.length != actual.size())
-					return false;
-				Iterator<? extends VariableElement> it = actual.iterator();
-				for(TypeMirror ec: expected) {
-					TypeMirror a = it.next().asType(); 
-					if(!processingEnv.getTypeUtils().isSubtype(ec, a))
-						return false;
-				}
-				return true;
-			}
-			
-			void checkAccessibility(Element member) {
-				if(!member.getModifiers().contains(Modifier.PUBLIC))
-					messager.printMessage(Kind.ERROR, "Can't create non public item", member);
-				if(member.getModifiers().contains(Modifier.ABSTRACT))
-					messager.printMessage(Kind.ERROR, "Can't create abstract item", member);
-			}
 
 			class CreateItem extends ElementKindVisitor7<Void, Composite<TypeElement, Element>> {
 				@Override
@@ -370,12 +347,6 @@ public class Doctor extends AbstractProcessor {
 						checkError(e.getAnnotation(ERROR_CLASS), e, p);
 					return defaultAction(e, p);
 				}
-				
-				public void checkError(Error error, ExecutableElement e, Composite<TypeElement, Element> p) {
-					checkAccessibility(e);
-					if(!checkSignature(error_signature, e. getParameters()))
-						messager.printMessage(Kind.ERROR, String.format("Error methods should have for parameters : %s", Arrays.toString(error_signature)), e);
-				}
 			}
 		}
 	}
@@ -387,12 +358,20 @@ public class Doctor extends AbstractProcessor {
 				public Description getDescription() {
 					return DescriptionFactory.getGroupDescription(this, _clazz, SUMMARY.getGroup(_clazz));
 				}
+				@Override
+				public boolean isEnclosed() {
+					return Doctor.isStatic(_clazz);
+				}
 			};
 		}
 
 		@Override
 		public Context<TypeElement, Element> newContext(String name, Composite<TypeElement, Element> parent, TypeElement clazz) {
 			return new AbstractContext<TypeElement, Element>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
+				@Override
+				public boolean isEnclosed() {
+					return Doctor.isStatic(_clazz);
+				}
 			};
 		}
 
@@ -418,6 +397,43 @@ public class Doctor extends AbstractProcessor {
 			};
 		}
 	};
+	
+	void checkType(Element e, ElementKind... kinds) {
+		ElementKind k = e.getKind();
+		for(ElementKind ks: kinds)
+			if(ks == k)
+				return;
+		messager.printMessage(Kind.ERROR, String.format("Shelly item is not allowed on this kind of element %s. Allowed on %s", k, Arrays.toString(kinds)), e);
+	}
+	
+	public boolean checkSignature(TypeMirror[] expected, List<? extends VariableElement> actual) {
+		if(expected.length != actual.size())
+			return false;
+		Iterator<? extends VariableElement> it = actual.iterator();
+		for(TypeMirror ec: expected) {
+			TypeMirror a = it.next().asType(); 
+			if(!processingEnv.getTypeUtils().isSubtype(ec, a))
+				return false;
+		}
+		return true;
+	}
+	
+	void checkAccessibility(Element member) {
+		if(!member.getModifiers().contains(Modifier.PUBLIC))
+			messager.printMessage(Kind.ERROR, "Can't create non public item", member);
+		if(member.getModifiers().contains(Modifier.ABSTRACT))
+			messager.printMessage(Kind.ERROR, "Can't create abstract item", member);
+	}
+
+	public void checkError(Error error, ExecutableElement e, Composite<TypeElement, Element> p) {
+		checkAccessibility(e);
+		if(!checkSignature(error_signature, e. getParameters()))
+			messager.printMessage(Kind.ERROR, String.format("Error methods should have for parameters : %s", Arrays.toString(error_signature)), e);
+	}
+	
+	static boolean isStatic(TypeElement clazz) {
+		return clazz.getModifiers().contains(Modifier.STATIC);
+	}
 	
 	public final static ElementValue<String> SUMMARY = new ElementValue<String>("summary", fr.labri.shelly.annotations.Option.NO_NAME);
 }

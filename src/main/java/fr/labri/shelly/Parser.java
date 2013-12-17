@@ -1,7 +1,6 @@
-package fr.labri.shelly.impl;
+package fr.labri.shelly;
 
-import fr.labri.shelly.Action;
-import fr.labri.shelly.Option;
+import fr.labri.shelly.impl.ParserFactory.AbstractParser;
 
 public interface Parser {
 
@@ -18,4 +17,20 @@ public interface Parser {
 	// Assume isLongOption == true
 	boolean getBooleanValue(String cmd);
 	int isLongBooleanOptionValid(String str, Option<?, ?> option, int index);
+	
+	public static final Parser GNUNonStrict = new AbstractParser() {
+
+	};
+	public static final Parser GNUStrict = new AbstractParser() {
+		// TODO maybe rename BSD
+		{
+			stictOptions = true;
+		}
+	};
+	public static Parser Java = new AbstractParser() {
+		{
+			longOptionPrefix = "-";
+			shortOptionPrefix = null;
+		}
+	};
 }

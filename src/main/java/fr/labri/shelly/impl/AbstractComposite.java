@@ -25,17 +25,13 @@ public abstract class AbstractComposite<C, M> extends AbstractItem<C, M> impleme
 	}
 
 	public void addItem(Item<C, M> cmd) { //FIXME rename to add, and commands to items
-		commands.add(cmd);
+		if (cmd != null)
+			commands.add(cmd);
 	}
 
 	@Override
 	public C getAssociatedElement() {
 		return _clazz;
-	}
-
-	@Override
-	public Composite<C, M> getParent() {
-		return _parent;
 	}
 
 	@Override
@@ -47,14 +43,8 @@ public abstract class AbstractComposite<C, M> extends AbstractItem<C, M> impleme
 	public Iterable<Item<C, M>> getItems() {
 		return commands;
 	}
-
+	
 	@Override
-	public Object instantiateObject(Object parent) {
-		return null;
-	}
-
-	@Override
-	public Object getEnclosingObject(Object obj) {
-		return null;
+	public void instantiateObject(Environ environ) {
 	}
 }

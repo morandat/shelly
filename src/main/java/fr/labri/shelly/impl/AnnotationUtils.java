@@ -18,7 +18,7 @@ import fr.labri.shelly.annotations.Command;
 import fr.labri.shelly.annotations.Context;
 import fr.labri.shelly.annotations.Group;
 import fr.labri.shelly.annotations.Option;
-import fr.labri.shelly.impl.ConverterFactory.BasicConverter;
+import fr.labri.shelly.impl.Converters.BasicConverter;
 
 public class AnnotationUtils {
 	public interface AnnotationType<V> {

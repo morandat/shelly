@@ -3,6 +3,7 @@ package fr.labri.shelly.impl;
 import java.lang.annotation.Annotation;
 
 import fr.labri.shelly.Composite;
+import fr.labri.shelly.Parser;
 import fr.labri.shelly.Terminal;
 
 public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implements Terminal<C, M> {
