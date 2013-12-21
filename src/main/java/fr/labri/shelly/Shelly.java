@@ -13,6 +13,7 @@ public class Shelly {
 	static public Group<Class<?>, Member> createModel(ModelBuilder<Class<?>, Member> factory, Class<?> clazz) {
 		return factory.createModel(clazz);
 	}
+	
 	static public Shell createShell(Recognizer model, Group<Class<?>, Member> group) {
 		return new Shell(model, group);
 	}

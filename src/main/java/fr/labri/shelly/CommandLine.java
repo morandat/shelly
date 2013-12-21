@@ -46,6 +46,6 @@ public class CommandLine extends BasicExecutor{
 	}
 	
 	public void parseCommandLine(Iterator<String> args) {
-		new CommandExecutor(new PeekIterator<String>(args), new Environ());
+		new CommandExecutor(new PeekIterator<String>(args), new Environ()).execute(getRoot());
 	}
 }

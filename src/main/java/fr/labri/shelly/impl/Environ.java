@@ -4,6 +4,7 @@ import java.lang.reflect.Member;
 import java.util.ArrayList;
 
 import fr.labri.shelly.Composite;
+import fr.labri.shelly.Group;
 import fr.labri.shelly.Terminal;
 
 public class Environ {
@@ -23,10 +24,18 @@ public class Environ {
 		return null;
 	}
 
-	public void pop() {
-		map.remove(last());
+	public Composite<Class<?>, Member> pop() {
+		return map.remove(last()).key;
 	}
 
+	public Group<Class<?>, Member> drop() {
+		Composite<Class<?>, Member> key;
+		do 
+			key = map.remove(last()).key;
+		while(!(key instanceof Group));
+		return (Group<Class<?>, Member>) key;
+	}
+	
 	public Object getLast() {
 		if (map.isEmpty())
 			return null;

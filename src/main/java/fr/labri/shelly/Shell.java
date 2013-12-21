@@ -1,6 +1,7 @@
 package fr.labri.shelly;
 
 import java.io.BufferedReader;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -16,23 +17,34 @@ import fr.labri.shelly.impl.Environ;
 import fr.labri.shelly.impl.ModelUtil;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.PeekIterator;
+import fr.labri.shelly.impl.Visitor;
 
 public class Shell extends BasicExecutor {
 	final Group<Class<?>, Member> _root;
 
 	interface ShellAdapter {
 		String prompt();
+
 		Iterator<String> parseLine(String line);
+
 		void catchBlock(Exception e) throws Exception;
+
 		String readLine() throws IOException;
+
 		void printResult(Object result) throws IOException;
+
+		Environ newEnv();
+
+		Group<Class<?>, Member> getRoot();
+
+		void finalize(CommandExecutor executor, Action<Class<?>, Member> last);
 	}
 
 	public Shell(Recognizer parser, Group<Class<?>, Member> createGroup) {
 		super(parser);
 		_root = createGroup;
 	}
-	
+
 	@Override
 	public ExecutorMode getMode() {
 		return ExecutorMode.INTERACTIVE;
@@ -45,7 +57,7 @@ public class Shell extends BasicExecutor {
 	public Group<Class<?>, Member> getRoot() {
 		return _root;
 	}
-	
+
 	public void printHelp(PrintStream out) {
 		HelpFactory.printHelp(getRoot(), out);
 	}
@@ -82,26 +94,52 @@ public class Shell extends BasicExecutor {
 				Iterator<String> a = Arrays.asList(line.split("\\s")).iterator();
 				return a;
 			}
+
+			@Override
+			public Environ newEnv() {
+				return new Environ();
+			}
+
+			@Override
+			public Group<Class<?>, Member> getRoot() {
+				return this.getRoot();
+			}
+
+			@Override
+			public void finalize(CommandExecutor executor, Action<Class<?>, Member> last) {
+				if (last instanceof Group)
+					executor.executeDefault((Group<Class<?>, Member>) last);
+			}
 		});
 	}
 
-	public void loop(InputStream in, ShellAdapter adapter) throws Exception {
+	public void loop(InputStream in, final ShellAdapter adapter) throws Exception {
 		String line;
-		do {
-			System.out.print(adapter.prompt());
-			System.out.flush();
-			line = adapter.readLine();
-			if (line != null)
+		try {
+			do {
+				System.out.print(adapter.prompt());
+				System.out.flush();
 				try {
-					// Object result =
-					new BasicExecutor.CommandExecutor(new PeekIterator<String>(adapter.parseLine(line)), new Environ()).execute(getRoot());;
-					// adapter.printResult(result);
+					line = adapter.readLine();
+					if (line != null) {
+						Environ env = adapter.newEnv();
+						Group<Class<?>, Member> root = adapter.getRoot();
+						// Object result =
+						new BasicExecutor.CommandExecutor(new PeekIterator<String>(adapter.parseLine(line)), env) {
+							protected void finalize(Action<Class<?>, Member> last) {
+								adapter.finalize(this, last);
+							}
+						}.execute(root);
+						// adapter.printResult(result);
+					}
 				} catch (RuntimeException e) {
 					adapter.catchBlock(e);
 				} catch (Exception e) {
 					adapter.catchBlock(e);
 				}
-		} while (line != null);
+			} while (true);
+		} catch (EOFException e1) {
+		}
 	}
 
 	public Action<Class<?>, Member> findAction(Recognizer parser, String cmd) {
@@ -112,22 +150,27 @@ public class Shell extends BasicExecutor {
 		return ModelUtil.findOption(getRoot(), parser, cmd);
 	}
 
-	ShellAdapter getMultiLevelShell(final BufferedReader in) {
+	public ShellAdapter getMultiLevelShell(final BufferedReader in) {
 		return new ShellAdapter() {
-			String prompt = String.format("%s> ", _root.getID());
+			final Environ env = new Environ();
+			Group<Class<?>, Member> current = Shell.this.getRoot();
 
 			@Override
 			public String prompt() {
-				return prompt;
+				return String.format("%s> ", current.getID());
 			}
 
 			@Override
 			public String readLine() throws IOException {
-				return in.readLine();
+				String line = in.readLine();
+				if ("".equals(line) && env.size() > 0)
+					throw new EOLException();
+				return line;
 			}
 
 			@Override
 			public void catchBlock(Exception e) throws Exception {
+				current = env.drop();
 				if (e instanceof EOLException)
 					return;
 				System.err.println("Error found " + e.getCause());
@@ -142,6 +185,21 @@ public class Shell extends BasicExecutor {
 			public Iterator<String> parseLine(String line) {
 				Iterator<String> a = Arrays.asList(line.split("\\s")).iterator();
 				return a;
+			}
+
+			@Override
+			public Environ newEnv() {
+				return env;
+			}
+
+			@Override
+			public Group<Class<?>, Member> getRoot() {
+				return current;
+			}
+
+			@Override
+			public void finalize(CommandExecutor executor, Action<Class<?>, Member> last) {
+				current = env.drop();
 			}
 		};
 	}
