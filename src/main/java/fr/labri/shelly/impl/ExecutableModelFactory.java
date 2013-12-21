@@ -353,7 +353,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 	
 	public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
-		final Converter<?>[] converters = fr.labri.shelly.impl.Converters.getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations(), false);
+		final Converter<?>[] converters = fr.labri.shelly.impl.Converters.getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations());
 		return newCommand(name, parent, method, converters, new CommandAdapter() {
 			@Override
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
@@ -376,6 +376,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		Class<?> type = field.getType();
 		if (type.isArray()) {
 			return getFieldArrayAdapter(converterFactory, field);
+		} else if (Boolean.class.isAssignableFrom(type)) {
+			return getBooleanFieldAdapter(field);
 		} else if (Collection.class.isAssignableFrom(type)) {
 			return getFieldCollectionAdapter(converterFactory, field);
 		} else if (Map.class.isAssignableFrom(type)) {
@@ -555,7 +557,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		
 		public FieldOptionMapAdapter(ConverterFactory factory, Field f) {
 			super(factory, f);
-			converters = Converters.getConverters(factory, findBound((ParameterizedType)field.getGenericType()), true);
+			converters = Converters.getConverters(factory, findBound((ParameterizedType)field.getGenericType()));
 		}
 		
 		protected Class<?> type(Field field) {
@@ -585,7 +587,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		
 		public FieldOptionAdapter(ConverterFactory factory, Field f) {
 			field = f;
-			converter = factory.getConverter(type(field), true);
+			converter = factory.getConverter(type(field));
 		}
 		
 		protected Class<?> type(Field field) {
@@ -595,7 +597,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		@Override
 		public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
 			try {
-				set(receive, converter.convert(text, executor));
+				set(receive, converter.convert(executor));
 			} catch (IllegalArgumentException | IllegalAccessException e) {
 				throw new RuntimeException(e);
 			}
@@ -612,38 +614,105 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 		@Override
 		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
-			return converter.isValid(opt, recognizer, str, index);
+			return recognizer.isLongOptionValid(str, opt);
 		}
 	};
 	static OptionAdapter getDirectAdapter(ConverterFactory converterFactory, final Field field) {
 		return new FieldOptionAdapter(converterFactory, field) {
 		};
 	}
-
-	static OptionAdapter getAccessorAdapter(ConverterFactory converterFactory, final Method method) {
-		final Converter<?> converters[] = Converters.getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations(), true);
-		return new OptionAdapter() {
+	static abstract class BooleanOptionAdapter implements OptionAdapter {
+		protected boolean value(Executor executor, String text) throws IllegalArgumentException, IllegalAccessException {
+			return executor.getRecognizer().getBooleanValue(text);
+		}
+		
+		@Override
+		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
+			return recognizer.isLongBooleanOptionValid(str, opt);
+		}
+	}
+	static OptionAdapter getBooleanFieldAdapter(final Field field) {
+		return new BooleanOptionAdapter() {
 			@Override
 			public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
 				try {
-					method.invoke(receive, Converters.convertArray(text, converters, executor));
-				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
+					field.set(receive, value(executor, text));
+
+				} catch (IllegalArgumentException | IllegalAccessException e) {
 					throw new RuntimeException(e);
 				}
 			}
+			
 
 			public Description getDescription(Triggerable<Class<?>, Member> abstractOption) {
-				return DescriptionFactory.getDescription(method, SUMMARY.getOption(method));
-			}
-			
-			@Override
-			public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
-				Converter<?> first = (converters.length == 0) ? Converters.STR_CONVERTER : converters[0];
-				return first.isValid(opt, recognizer, str, index);
+				return DescriptionFactory.getDescription(field, SUMMARY.getOption(field));
 			}
 		};
 	}
+	
+	static OptionAdapter getAccessorAdapter(ConverterFactory converterFactory, final Method method) {
+		Class<?>[] pt = method.getParameterTypes();
+		if (pt.length > 0 && Boolean.class.isAssignableFrom(pt[0])) {
+			return new OptionBooleanFieldAccessor(converterFactory, method);
+		}
+		return new OptionFieldAccessorAdapter(converterFactory, method);
+	}
 
+	static class OptionBooleanFieldAccessor extends BooleanOptionAdapter {
+		final Method method;
+		final Converter<?> converters[];
+
+		public OptionBooleanFieldAccessor(ConverterFactory factory, Method method) {
+			this.method = method;
+			Class<?>[] types = method.getParameterTypes();
+			Class<?>[] params = Arrays.copyOfRange(types, 1, types.length);
+			converters = Converters.getConverters(factory, params);
+		}
+		public Description getDescription(Triggerable<Class<?>, Member> abstractOption) {
+			return DescriptionFactory.getDescription(method, SUMMARY.getOption(method));
+		}
+
+		@Override
+		public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
+			Object[] params = new Object[converters.length + 1];
+			try {
+				params[0] = value(executor, text);
+				if (converters.length > 0) {
+					for (int i = 0; i < converters.length ; i ++)
+						params[i + 1] = converters[i].convert(executor);
+				}
+
+				method.invoke(receive, params);
+			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			}
+		}
+	}
+	
+	static class OptionFieldAccessorAdapter implements OptionAdapter {
+		final Method method;
+		final Converter<?> converters[];
+		public OptionFieldAccessorAdapter(ConverterFactory converterFactory, Method method) {
+			this.method = method;
+			converters = Converters.getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations());
+		}
+
+		@Override
+		public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
+			try {
+				method.invoke(receive, Converters.convertArray(text, converters, executor));
+			} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		public Description getDescription(Triggerable<Class<?>, Member> abstractOption) {
+			return DescriptionFactory.getDescription(method, SUMMARY.getOption(method));
+		}
+		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
+			return recognizer.isLongOptionValid(str, opt);
+		}
+	}
+	
 	static class AbstractModelFactory extends ExecutableModelFactory {
 		final ExecutableModelFactory _parent;
 

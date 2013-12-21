@@ -13,6 +13,6 @@ import fr.labri.shelly.impl.ExecutableModelFactory;
 public @interface Command{
 	String name() default Option.NO_NAME;
 	String summary() default Option.NO_NAME;
-	Class<? extends ConverterFactory>[] converter() default fr.labri.shelly.impl.Converters.BasicConverter.class;
+	Class<? extends ConverterFactory>[] converter() default fr.labri.shelly.impl.Converters.BasicConverters.class;
 	Class<? extends ExecutableModelFactory> factory() default ExecutableModelFactory.class;
 }

@@ -18,7 +18,7 @@ import fr.labri.shelly.annotations.Command;
 import fr.labri.shelly.annotations.Context;
 import fr.labri.shelly.annotations.Group;
 import fr.labri.shelly.annotations.Option;
-import fr.labri.shelly.impl.Converters.BasicConverter;
+import fr.labri.shelly.impl.Converters.BasicConverters;
 
 public class AnnotationUtils {
 	public interface AnnotationType<V> {
@@ -159,7 +159,7 @@ public class AnnotationUtils {
 	}
 
 	final public static Class<? extends ConverterFactory>[] getConverterFactory(Class<? extends ConverterFactory> converter[]) {
-		if (converter.length < 1 || BasicConverter.class.equals(converter[0]))
+		if (converter.length < 1 || BasicConverters.class.equals(converter[0]))
 			return null;
 		return converter;
 	}

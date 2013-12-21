@@ -2,7 +2,6 @@ package fr.labri.shelly.impl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
-import java.lang.reflect.Member;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,14 +10,12 @@ import java.util.Map.Entry;
 
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Executor;
-import fr.labri.shelly.Option;
-import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.annotations.Param;
 
 public class Converters {
 
-	final static public fr.labri.shelly.ConverterFactory DEFAULT = new fr.labri.shelly.impl.Converters.BasicConverter();
+	final static public fr.labri.shelly.ConverterFactory DEFAULT = new fr.labri.shelly.impl.Converters.BasicConverters();
 	
 	public static class CompositeFactory implements fr.labri.shelly.ConverterFactory {
 		final fr.labri.shelly.ConverterFactory[] _factories;
@@ -28,15 +25,15 @@ public class Converters {
 			_parent = parent;
 		}
 		@Override
-		public Converter<?> getConverter(Class<?> type, boolean isOption) {
+		public Converter<?> getConverter(Class<?> type) {
 			for(fr.labri.shelly.ConverterFactory factory : _factories) {
-				Converter<?> converter = factory.getConverter(type, isOption);
+				Converter<?> converter = factory.getConverter(type);
 				if(converter != null) {
 					return converter;
 				}
 			}
 			if(_parent != null)
-				return _parent.getConverter(type, isOption);
+				return _parent.getConverter(type);
 			return null;
 		}
 	}
@@ -45,7 +42,7 @@ public class Converters {
 		Object[] res = new Object[converters.length];
 		int i = 0;
 		for(Converter<?> converter : converters)
-			res[i++] = converter.convert(cmd, executor);
+			res[i++] = converter.convert(executor);
 		return res;
 	}
 	
@@ -133,36 +130,7 @@ public class Converters {
 			return Long.parseLong(cmd);
 		}
 	}
-	
-	static abstract class BooleanOptionConverter implements Converter<Boolean>{
-		@Override
-		public Boolean convert(String cmd, Executor executor) {
-			return executor.getRecognizer().getBooleanValue(cmd);
-		}
-
-		@Override
-		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String cmd, int index) {
-			return recognizer.isLongBooleanOptionValid(cmd, opt, index);
-		}
 		
-		abstract public Class<? super Boolean> convertedType();
-	}
-
-	public static final Converter<?>[] DEFAULTS_OPTIONS = new Converter<?>[] {
-		new BooleanOptionConverter() {
-			@Override
-			public Class<? super Boolean> convertedType() {
-				return boolean.class;
-			}
-		},
-		new BooleanOptionConverter() {
-			@Override
-			public Class<? super Boolean> convertedType() {
-				return Boolean.class;
-			}
-		},
-	};
-	
 	public static final Converter<?>[] DEFAULTS = new Converter<?>[] {
 		STR_CONVERTER,
 
@@ -172,18 +140,20 @@ public class Converters {
 		new LongFactory().getPrimitiveConverter(),
 		new ShortFactory().getOjectConverter(),
 		new ShortFactory().getPrimitiveConverter(),
+		new BooleanFactory().getOjectConverter(),
+		new BooleanFactory().getPrimitiveConverter(),
 		new MapEntryConverter()
 	};
 
-	public static class BasicConverter implements fr.labri.shelly.ConverterFactory {
+	public static class BasicConverters implements fr.labri.shelly.ConverterFactory {
 		
 		@SuppressWarnings("unchecked")
-		public Converter<?> getConverter(Class<?> type, boolean isOption) {
+		public Converter<?> getConverter(Class<?> type) {
 			Converter<?> converter = null;
 			if (type.isArray())
 				converter = getActionArrayConverter((Class<Object[]>)type);
 			else
-				converter = getObjectConverter(type, isOption);
+				converter = getObjectConverter(type);
 
 			if (converter == null)
 				throw new RuntimeException(String.format("No converter for type %s", type.toString()));
@@ -191,15 +161,11 @@ public class Converters {
 		}
 		
 		public Converter<?> getActionArrayConverter(Class<? extends Object[]> type) {
-			return new ArrayConverter<>(getConverter(type.getComponentType(), false));
+			return new ArrayConverter<>(getConverter(type.getComponentType()));
 		}
 		
 		@SuppressWarnings("unchecked")
-		public <E> Converter<E> getObjectConverter(Class<E> type, boolean isOption) {
-			if(isOption)
-				for(Converter<?> c: DEFAULTS_OPTIONS)
-					if(type.isAssignableFrom(c.convertedType()))
-						return (Converter<E>) c;
+		public <E> Converter<E> getObjectConverter(Class<E> type) {
 			for(Converter<?> c: DEFAULTS)
 				if(type.isAssignableFrom(c.convertedType()))
 					return (Converter<E>) c;
@@ -212,7 +178,7 @@ public class Converters {
 			return "=";
 		}
 		@Override
-		public Entry<String, String> convert(String cmd, Executor executor) {
+		public Entry<String, String> convert(Executor executor) {
 			String text = executor.getCommandLine().next();
 			int idx = text.indexOf(getMapSeparator());
 			if (idx == -1)
@@ -225,30 +191,21 @@ public class Converters {
 		public Class<? super Entry<String, String>> convertedType() {
 			return Map.Entry.class;
 		}
-
-		@Override
-		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String cmd, int index) {
-			return recognizer.isLongOptionValid(cmd, opt);
-		}
 	}
 
 	static class ArrayConverter<E> implements Converter<E[]> {
 		final Converter<? extends E> _converter;
-		
-		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String cmd, int index) {
-			return recognizer.isLongOptionValid(cmd, opt);
-		}
 		
 		public ArrayConverter(Converter<E> converter) {
 			_converter = converter;
 		}
 
 		@SuppressWarnings("unchecked")
-		final public E[] convert(String cmd, Executor executor) {
+		final public E[] convert(Executor executor) {
 			ArrayList<E> lst = new ArrayList<>();
 			PeekIterator<String> line = executor.getCommandLine();
 			while (line.hasNext())
-				lst.add(_converter.convert(cmd, executor));
+				lst.add(_converter.convert(executor));
 			return lst.toArray((E[]) Array.newInstance(_converter.convertedType(), lst.size()));
 		}
 
@@ -260,12 +217,7 @@ public class Converters {
 	};
 	
 	public static abstract class SimpleConverter<T> implements Converter<T> {
-		@Override
-		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String cmd, int index) {
-			return recognizer.isLongOptionValid(cmd, opt);
-		}
-
-		final public T convert(String cmd, Executor executor) {
+		final public T convert(Executor executor) {
 			return convert(executor.getCommandLine().next());
 		}
 
@@ -294,24 +246,15 @@ public class Converters {
 		abstract E newItem(Class<E> clazz) throws InstantiationException, IllegalAccessException; // clazz.newInstance()
 	}
 
-	public static Converter<?>[] getConverters(final fr.labri.shelly.ConverterFactory factory, Class<?> param, final boolean isOption) {
-		return new Converter[] { new fr.labri.shelly.impl.Converters() {
-			public Converter<?> getConverter(Class<?> type, Object context) {
-				Converter<?> converter = factory.getConverter(type, isOption);
-				return new ArrayConverter<>(converter);
-			}
-		}.getConverter(param, param) };
-	}
-
-	static Converter<?>[] getConverters(fr.labri.shelly.ConverterFactory factory, Class<?>[] params, boolean isOption) {
+	static Converter<?>[] getConverters(fr.labri.shelly.ConverterFactory factory, Class<?>[] params) {
 		int i = 0;
 		Converter<?>[] converters = new Converter<?>[params.length];
 		for (Class<?> a : params)
-			converters[i++] = factory.getConverter(a, isOption);
+			converters[i++] = factory.getConverter(a);
 		return converters;
 	}
 
-	static Converter<?>[] getConverters(fr.labri.shelly.ConverterFactory factory, Class<?>[] params, Annotation[][] annotations, boolean isOption) {
+	static Converter<?>[] getConverters(fr.labri.shelly.ConverterFactory factory, Class<?>[] params, Annotation[][] annotations) {
 		int i = 0;
 		Converter<?>[] converters = new Converter<?>[params.length];
 		for (Class<?> a : params) {
@@ -321,7 +264,7 @@ public class Converters {
 			if(pa != null && !fr.labri.shelly.ConverterFactory.class.equals(c = pa.converter()))
 				f = cache.newFactory(c);
 			
-			converters[i++] =  ((f == null) ? factory : f).getConverter(a, isOption);
+			converters[i++] =  ((f == null) ? factory : f).getConverter(a);
 		}
 		return converters;
 	}

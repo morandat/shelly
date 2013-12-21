@@ -47,6 +47,12 @@ public class SimpleProject {
 		level = val;
 		System.err.println(val);
 	}
+	
+	@Option
+	public void map(Boolean val, String key) {
+		System.err.println(key + " => " + val);
+	}
+
 
 	@Command
 	@Description(summary = "a another short ex.")
@@ -169,7 +175,7 @@ public class SimpleProject {
 	}
 
 	static public class MyFactory implements ConverterFactory {
-		public Converter<?> getConverter(Class<?> type, boolean isOption) {
+		public Converter<?> getConverter(Class<?> type) {
 			if (type.isAssignableFrom(Color.class))
 				return new SimpleConverter<Color>() {
 					@Override

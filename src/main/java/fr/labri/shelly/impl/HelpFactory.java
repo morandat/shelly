@@ -1,7 +1,6 @@
 package fr.labri.shelly.impl;
 
 import java.io.PrintStream;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -32,7 +31,7 @@ public class HelpFactory {
 		@Override
 		public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
 			@SuppressWarnings("unchecked")
-			final Converter<String[]> converter = new fr.labri.shelly.impl.Converters.ArrayConverter<String>((Converter<String>) converterFactory.getConverter(String.class, false));
+			final Converter<String[]> converter = new fr.labri.shelly.impl.Converters.ArrayConverter<String>((Converter<String>) converterFactory.getConverter(String.class));
 			HelpNavigator navigator = NAVIGATOR;
 			HelpFormater formater = FORMATER;
 			HelpRenderer renderer = RENDERER;
@@ -74,10 +73,9 @@ public class HelpFactory {
 					throw new ShellyException.EOLException();
 					
 				}
-
 				@Override
 				public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
-					return Converters.STR_CONVERTER.isValid(opt, recognizer, str, index);
+					return recognizer.isLongOptionValid(str, opt);
 				}
 			});
 		}
@@ -115,7 +113,7 @@ public class HelpFactory {
 	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
 		@SuppressWarnings("unchecked")
-		final Converter<String[]> converter =  new fr.labri.shelly.impl.Converters.ArrayConverter<String>((Converter<String>) factory.getConverter(String.class, false));
+		final Converter<String[]> converter =  new fr.labri.shelly.impl.Converters.ArrayConverter<String>((Converter<String>) factory.getConverter(String.class));
 		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, null /*FIXME*/, converter, getHelpCommandAdapter(converter, navigator, formater, renderer));
 	}
 
@@ -124,7 +122,7 @@ public class HelpFactory {
 			@Override
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, Executor executor, String next) {
 				ArrayConverter<String> args = new fr.labri.shelly.impl.Converters.ArrayConverter<String>(Converters.STR_CONVERTER);
-				String[] query = args.convert(next, executor);
+				String[] query = args.convert(executor);
 				Triggerable<Class<?>, Member> item = navigator.findTopic(ModelUtil.findGroup(cmd), executor.getRecognizer(), query);
 				printHelp(item, System.out, formater, renderer);
 			}

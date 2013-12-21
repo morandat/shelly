@@ -16,7 +16,7 @@ public interface Recognizer {
 	
 	// Assume isLongOption == true
 	boolean getBooleanValue(String cmd);
-	int isLongBooleanOptionValid(String str, Option<?, ?> option, int index);
+	int isLongBooleanOptionValid(String str, Option<?, ?> option);
 	
 	public static final Recognizer GNUNonStrict = new AbstractRecognizer() {
 
@@ -85,11 +85,12 @@ public interface Recognizer {
 		}
 		
 		@Override
-		public int isLongBooleanOptionValid(String str, Option<?, ?> option, int index) {
-			if(str.startsWith(no_flag, index))
-				index += no_flag.length();
+		public int isLongBooleanOptionValid(String str, Option<?, ?> option) {
+			int start = longOptionPrefix.length();
+			if(str.startsWith(no_flag, start))
+				start += no_flag.length();
 			
-			return index = StringUtils.startWith(str, option.getID(), index);
+			return start = StringUtils.startWith(str, option.getID(), start);
 		}
 	}
 }
