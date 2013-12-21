@@ -3,6 +3,7 @@ package fr.labri.shelly.impl;
 import java.lang.annotation.Annotation;
 
 import fr.labri.shelly.Composite;
+import fr.labri.shelly.Executor;
 import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Terminal;
 
@@ -16,6 +17,7 @@ public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implemen
 		@Override
 		public int isValid(Recognizer parser, String str, int index) {
 			return StringUtils.startWith(str, _id, index);
+		
 		}
 		
 		@Override
@@ -24,6 +26,6 @@ public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implemen
 		}
 
 		@Override
-		public void executeAction(Object receive, String string, Executor executor) {
+		public void execute(Object receive, String string, Executor executor) {
 		}
 }

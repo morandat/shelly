@@ -3,6 +3,9 @@ package demo;
 import java.awt.Color;
 import java.lang.reflect.Member;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.annotations.Error;
@@ -10,6 +13,7 @@ import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.impl.Converters.SimpleConverter;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelUtil;
+import fr.labri.shelly.CommandLine;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Shell;
@@ -23,6 +27,18 @@ public class SimpleProject {
 
 	@Option
 	public boolean debug = true;
+
+	@Option
+	public String[] include;
+
+	@Option
+	public Map<String,Integer> levels;
+
+	@Option
+	public List<String> exclude;
+
+	@Option
+	public Set<String> signals;
 
 	int level = 0;
 
@@ -70,6 +86,11 @@ public class SimpleProject {
 	@Command(summary = "Some short text")
 	@Description(url = "!echo.txt")
 	public void echo(String data[]) {
+		System.out.println("includes " +Arrays.toString(include));
+		System.out.println("excludes " + exclude);
+		System.out.println("signals " + signals);
+		System.out.println("levels " + levels);
+		
 		System.out.println("options: " + debug);
 		System.out.println(Arrays.toString(data));
 	}
@@ -148,7 +169,7 @@ public class SimpleProject {
 	}
 
 	static public class MyFactory implements ConverterFactory {
-		public Converter<?> getConverter(Class<?> type, boolean isOption, Object context) {
+		public Converter<?> getConverter(Class<?> type, boolean isOption) {
 			if (type.isAssignableFrom(Color.class))
 				return new SimpleConverter<Color>() {
 					@Override
@@ -169,10 +190,10 @@ public class SimpleProject {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		Shell shell = Shelly.createShell(SimpleProject.class);
+		fr.labri.shelly.Group<Class<?>, Member> model = Shelly.createModel(SimpleProject.class);
 		if (args.length == 0)
-			shell.loop(System.in, Recognizer.GNUNonStrict);
+			new Shell(Recognizer.GNUNonStrict, model).loop(System.in);
 		else
-			shell.parseCommandLine(args, Recognizer.GNUNonStrict);
+			new CommandLine(Recognizer.GNUNonStrict, model).parseCommandLine(args);
 	}
 }

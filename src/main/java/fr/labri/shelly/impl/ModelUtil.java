@@ -18,7 +18,7 @@ public class ModelUtil {
 			Visitor<C, M> v = new Visitor.ActionVisitor<C, M>() {
 				@Override
 				public void visit(Action<C, M> grp) {
-					if (parser.isActionValid(cmd, grp)) {
+					if (parser.isActionValid(cmd, grp) >= 0) {
 						throw new Visitor.FoundCommand(grp);
 					}
 				}
@@ -55,7 +55,7 @@ public class ModelUtil {
 				OptionVisitor<C, M> v = new OptionVisitor<C, M>() {
 					@Override
 					public void visit(Option<C, M> option) {
-						if (parser.isLongOptionValid(cmd, option))
+						if (parser.isLongOptionValid(cmd, option) >= 0)
 							throw new FoundOption(option);
 					};
 				};

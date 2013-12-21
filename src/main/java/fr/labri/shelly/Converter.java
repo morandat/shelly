@@ -1,9 +1,11 @@
 package fr.labri.shelly;
 
-import fr.labri.shelly.impl.PeekIterator;
+import java.lang.reflect.Member;
 
 
 public interface Converter<T> {
-	T convert(String cmd, PeekIterator<String> cmdLine);
-	public abstract Class<?> convertedType();
+	public abstract T convert(String cmd, Executor executor);
+
+	public abstract Class<? super T> convertedType();
+	int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String cmd, int index); // FIXME this is ugly
 }

@@ -3,6 +3,7 @@ package fr.labri.shelly.impl;
 import java.lang.annotation.Annotation;
 
 import fr.labri.shelly.Composite;
+import fr.labri.shelly.Executor;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Triggerable;
@@ -29,7 +30,7 @@ public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implem
 	}
 	
 	@Override
-	public void executeAction(Object receive, String string, Executor executor) {
+	public void execute(Object receive, String string, Executor executor) {
 	}
 
 	@Override

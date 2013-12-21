@@ -13,12 +13,14 @@ import fr.labri.shelly.Composite;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
-import fr.labri.shelly.Option;
+import fr.labri.shelly.Executor;
 import fr.labri.shelly.Group;
+import fr.labri.shelly.Option;
 import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
+import fr.labri.shelly.impl.Converters.ArrayConverter;
 import fr.labri.shelly.impl.ExecutableModelFactory.CommandAdapter;
 
 public class HelpFactory {
@@ -29,7 +31,8 @@ public class HelpFactory {
 
 		@Override
 		public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
-			final Converter<?>[] converters = fr.labri.shelly.impl.Converters.getConverters(converterFactory, String.class);
+			@SuppressWarnings("unchecked")
+			final Converter<String[]> converter = new fr.labri.shelly.impl.Converters.ArrayConverter<String>((Converter<String>) converterFactory.getConverter(String.class, false));
 			HelpNavigator navigator = NAVIGATOR;
 			HelpFormater formater = FORMATER;
 			HelpRenderer renderer = RENDERER;
@@ -41,34 +44,42 @@ public class HelpFactory {
 				} catch (InstantiationException | IllegalAccessException e) {
 				}
 			}
-			return newCommand(name, parent, method, converters, getHelpCommandAdapter(converters, NAVIGATOR, FORMATER, RENDERER));
+			return newCommand(name, parent, method, converter, getHelpCommandAdapter(converter, NAVIGATOR, FORMATER, RENDERER));
 		}
 		
 		@Override
-		public Option<Class<?>, Member> newOption(ConverterFactory converterFactory, final Composite<Class<?>, Member> parent, String name, final Method member) {
+		public Option<Class<?>, Member> newOption(ConverterFactory converterFactory, final Composite<Class<?>, Member> parent, String name, final Member member) {
 			HelpFormater formater = FORMATER;
 			HelpRenderer renderer = RENDERER;
-			for(Class<?> t: member.getParameterTypes()) {
-				try {
-					formater = t.isAssignableFrom(HelpFormater.class) ? (HelpFormater) t.newInstance() : formater;
-					renderer = t.isAssignableFrom(HelpRenderer.class) ? (HelpRenderer) t.newInstance() : renderer;
-				} catch (InstantiationException | IllegalAccessException e) {
+			if (member instanceof Method)
+				for(Class<?> t: ((Method)member).getParameterTypes()) {
+					try {
+						formater = t.isAssignableFrom(HelpFormater.class) ? (HelpFormater) t.newInstance() : formater;
+						renderer = t.isAssignableFrom(HelpRenderer.class) ? (HelpRenderer) t.newInstance() : renderer;
+					} catch (InstantiationException | IllegalAccessException e) {
+					}
 				}
-			}
 			final HelpFormater _formater = formater;
 			final HelpRenderer _renderer = renderer;
-			return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation((AnnotatedElement)member)) {
+			return newOption(name, parent, member, new OptionAdapter() {
+				
 				@Override
-				public void executeAction(Object receive, String next, Executor executor) {
+				public Description getDescription(Triggerable<Class<?>, Member> cmd) {
+					return HELP_DESCRIPTION;
+				}
+				
+				@Override
+				public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
 					printHelp(ModelUtil.findRoot(parent), System.out, _formater, _renderer);
 					throw new ShellyException.EOLException();
+					
 				}
 
 				@Override
-				public Description getDescription() {
-					return HELP_DESCRIPTION;
+				public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
+					return Converters.STR_CONVERTER.isValid(opt, recognizer, str, index);
 				}
-			};
+			});
 		}
 	}
 	
@@ -101,18 +112,20 @@ public class HelpFactory {
 		return getHelpCommand(item, name, factory, NAVIGATOR, FORMATER, RENDERER);
 	}
 
-	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> item, final String name,ConverterFactory factory, final HelpNavigator navigator,
+	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
-		final Converter<?>[] converters = (Converter<?>[]) fr.labri.shelly.impl.Converters.getConverters(factory, String.class);
-		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, item, null /*FIXME*/, converters, getHelpCommandAdapter(converters, navigator, formater, renderer));
+		@SuppressWarnings("unchecked")
+		final Converter<String[]> converter =  new fr.labri.shelly.impl.Converters.ArrayConverter<String>((Converter<String>) factory.getConverter(String.class, false));
+		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, null /*FIXME*/, converter, getHelpCommandAdapter(converter, navigator, formater, renderer));
 	}
 
-	private static CommandAdapter getHelpCommandAdapter(final Converter<?>[] converters, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
+	private static CommandAdapter getHelpCommandAdapter(final Converter<String[]> converters, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
 		return new CommandAdapter() {
 			@Override
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, Executor executor, String next) {
-				String[] args = (String[]) fr.labri.shelly.impl.Converters.convertArray(converters, next, executor.getCommandLine())[0]; // FIXME [0]
-				Triggerable<Class<?>, Member> item = navigator.findTopic(ModelUtil.findGroup(cmd), executor.getParser(), args); // FIXME
+				ArrayConverter<String> args = new fr.labri.shelly.impl.Converters.ArrayConverter<String>(Converters.STR_CONVERTER);
+				String[] query = args.convert(next, executor);
+				Triggerable<Class<?>, Member> item = navigator.findTopic(ModelUtil.findGroup(cmd), executor.getRecognizer(), query);
 				printHelp(item, System.out, formater, renderer);
 			}
 

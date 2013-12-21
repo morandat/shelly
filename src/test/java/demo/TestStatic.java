@@ -1,7 +1,6 @@
 package demo;
 
 import fr.labri.shelly.Recognizer;
-import fr.labri.shelly.Shell;
 import fr.labri.shelly.Shelly;
 import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.annotations.Command;
@@ -16,6 +15,16 @@ public class TestStatic {
 	@Option	public static boolean s0;
 	@Option	public boolean n0;
 	
+	@Command
+	public static void foo1() {
+		printInfo(Test2.class);
+	}
+	@Command
+	public void foo () {
+		printInfo(getClass());
+		System.out.printf("%b %b\n", s0, n0);
+	}
+
 	@Group
 	public class Test1 {
 		@Option	public boolean n1;
@@ -36,15 +45,6 @@ public class TestStatic {
 				System.out.printf("%b %b %b %b\n", s0, TestStatic.this.n0,Test1.this.n1, n7);
 			}	
 		}
-	}
-	@Command
-	public static void foo1() {
-		printInfo(Test2.class);
-	}
-	@Command
-	public void foo () {
-		printInfo(getClass());
-		System.out.printf("%b %b\n", s0, n0);
 	}
 
 	@Group
@@ -152,6 +152,6 @@ public class TestStatic {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		Shelly.createShell(TestStatic.class).loop(System.in, Recognizer.GNUNonStrict);;
+		Shelly.createShell(Recognizer.GNUNonStrict, TestStatic.class).loop(System.in);
 	}
 }

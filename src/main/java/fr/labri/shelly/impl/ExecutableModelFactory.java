@@ -1,12 +1,23 @@
 package fr.labri.shelly.impl;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Vector;
 
 import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
@@ -14,6 +25,7 @@ import fr.labri.shelly.Context;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
+import fr.labri.shelly.Executor;
 import fr.labri.shelly.Group;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
@@ -21,6 +33,7 @@ import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.impl.AnnotationUtils.ReflectValue;
+import fr.labri.shelly.impl.Converters.SimpleConverter;
 
 public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
@@ -145,7 +158,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 	
 	public interface OptionAdapter extends TriggerableAdapter {
-		abstract void setOption(Option<Class<?>, Member> opt, Object receive, Object value);
+		public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text);
+		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index);
 	}
 	
 	public interface CommandAdapter extends ActionAdapter {
@@ -184,8 +198,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 		}
 
-		public void instantiateObject(Composite<Class<?>, Member> item, Environ environ) {
-			newInstance(item, _ctor, environ);
+		public Object instantiateObject(Composite<Class<?>, Member> item, Object parent) {
+			return newInstance(item, _ctor, parent);
 		}
 	}
 
@@ -198,19 +212,14 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		GroupAdapter(Class<?> clazz) {
 			super(clazz);
 		}
-		
-		public abstract void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text);
-
-		public Object apply(AbstractGroup<Class<?>, Member> grp, Object receive, Executor executor) {
-			return receive;
-		}
+		abstract void executeGroup(AbstractGroup<Class<?>, Member> cmd, Object grp, Executor executor, String text);
 	}
 
 	public Context<Class<?>, Member> newContext(String name, Composite<Class<?>, Member> parent, Class<?> clazz, final CompositeAdapter adapter) {
 		return new AbstractContext<Class<?>, Member>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
 			@Override
-			public void instantiateObject(Environ environ) {
-				adapter.instantiateObject(this, environ);
+			public Object instantiateObject(Object parent) {
+				return adapter.instantiateObject(this, parent);
 			}
 
 			@Override
@@ -228,23 +237,23 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 	
 	public Group<Class<?>, Member> newGroup(String name, Composite<Class<?>, Member> parent, final Class<?> clazz) {
-		final GroupAdapter adapter = new GroupAdapter(clazz) {
-			@Override
-			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
-			}
-
-			@Override
-			public Description getDescription(Triggerable<Class<?>, Member> group) {
-				return DescriptionFactory.getGroupDescription((Group<Class<?>, Member>) group, clazz, SUMMARY.getGroup(clazz));
-			}
-		};
-		
 		return new AbstractGroup<Class<?>, Member>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
 			private Description _description;
-
+			final GroupAdapter adapter = new GroupAdapter(clazz) {
+				
+				@Override
+				public void executeGroup(AbstractGroup<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
+				}
+				
+				@Override
+				public Description getDescription(Triggerable<Class<?>, Member> group) {
+					return _description = DescriptionFactory.getGroupDescription((Group<Class<?>, Member>) group, clazz, SUMMARY.getGroup(clazz));
+				}
+			};
+			
 			@Override
-			public void executeAction(Object receive, String next, Executor executor) {
-				adapter.apply(this, receive, executor);
+			public void execute(Object receive, String next, Executor executor) {
+				adapter.executeGroup(this, receive, executor, next);
 			}
 
 			@Override
@@ -255,8 +264,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 
 			@Override
-			public void instantiateObject(Environ environ) {
-				adapter.instantiateObject(this, environ);
+			public Object instantiateObject(Object parent) {
+				return adapter.instantiateObject(this, parent);
 			}
 
 			@Override
@@ -266,52 +275,33 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		};
 	}
 
-	static void newInstance(Composite<Class<?>, Member> parent, Constructor<?> ctor, Environ environ) {
+	static Object newInstance(Composite<Class<?>, Member> item, Constructor<?> ctor, Object parent) {
 		try {
-			if (parent.isEnclosed()) {
-				environ.push(parent, ctor.newInstance(environ.getLast()));
+			if (item.isEnclosed()) {
+				return ctor.newInstance(parent);
 			} else {
-				environ.push(parent, ctor.newInstance());
+				return ctor.newInstance();
 			}
 		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	public static Option<Class<?>, Member> newOption(String name, Composite<Class<?>, Member> parent, Member member, final Converter<?> converter,
-			final OptionAdapter adapter) {
+	public static Option<Class<?>, Member> newOption(String name, Composite<Class<?>, Member> parent, Member member, final OptionAdapter adapter) {
 		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation(member)) {
 			private Description _description;
 			@Override
-			public void executeAction(Object receive, String next, Executor executor) {
-				Object o = converter.convert(next, executor.getCommandLine());
-				adapter.setOption(this, receive, o);
+			public int isValid(Recognizer recognizer, String str, int index) {
+				return adapter.isValid(this, recognizer, str, index);
 			}
+
+			@Override
+			public void execute(Object receive, String next, Executor executor) {
+				adapter.executeOption(this, receive, executor, next);
+			}
+
 			@Override
 			public Description getDescription() {
-			if (_description != null)
-				return _description;
-			return (_description = adapter.getDescription(this));
-		}
-		};
-	}
-
-	public static Option<Class<?>, Member> newBooleanOption(String name, Composite<Class<?>, Member> parent, Member member, final OptionAdapter adapter) {
-		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation(member)) {
-			private Description _description;
-
-			@Override
-			public int isValid(Recognizer parser, String str, int index) {
-				return parser.isLongBooleanOptionValid(str, this, index);
-			}
-
-			@Override
-			public void executeAction(Object receive, String next, Executor executor) {
-				adapter.setOption(this, receive, !executor.getParser().getBooleanValue(next));
-			}
-
-			@Override
-				public Description getDescription() {
 				if (_description != null)
 					return _description;
 				return (_description = adapter.getDescription(this));
@@ -320,37 +310,32 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 
 	public Option<Class<?>, Member> newOption(ConverterFactory factory, Composite<Class<?>, Member> parent, String name, final Member member) {
+		OptionAdapter adapter;
 		if(member instanceof Field)
-			return newOption(factory, parent, name, (Field)member);
-		if(member instanceof Method)
-			return newOption(factory, parent, name, (Method)member);
-		throw new RuntimeException("Option cannot be associated with constructor: "+ member);
+			adapter = getFieldAdapter(factory, (Field)member);
+		else if(member instanceof Method)
+			adapter = getAccessorAdapter(factory, (Method)member);
+		else 
+			throw new RuntimeException("Option cannot be associated with constructor: " + member);	
+		return newOption(name, parent, member, adapter);
 	}
-	public Option<Class<?>, Member> newOption(ConverterFactory factory, Composite<Class<?>, Member> parent, String name, Field field) {
-		Class<?> type = field.getType();
-		if (typeIsBool(type))
-			return newBooleanOption(name, parent, field, getFieldAdapter(field));
-		return newOption(name, parent, field, factory.getConverter(type, true, name), getFieldAdapter(field));
-	}
-
-	public Option<Class<?>, Member> newOption(ConverterFactory factory, Composite<Class<?>, Member> parent, String name, final Method method) {
-		Class<?> type = method.getParameterTypes()[0];
-		if (typeIsBool(type))
-			return newBooleanOption(name, parent, method, getAccessorAdapter(method));
-		return newOption(name, parent, method, factory.getConverter(type, true, name), getAccessorAdapter(method));
-	}
-
-	boolean typeIsBool(Class<?> clazz) {
+	
+	boolean isBoolean(Class<?> clazz) {
 		return (Boolean.class.equals(clazz) || boolean.class.equals(clazz));
 	}
 
+	public Command<Class<?>, Member> newCommand(String name, Composite<Class<?>, Member> parent, Member member, Converter<?> converter,
+			final CommandAdapter adapter) {
+		return newCommand(name, parent, member, new Converter[] { converter }, adapter);
+	}
+	
 	public Command<Class<?>, Member> newCommand(String name, Composite<Class<?>, Member> parent, Member member, Converter<?>[] converters,
 			final CommandAdapter adapter) {
 		return new AbstractCommand<Class<?>, Member>(name, parent, member, AnnotationUtils.extractAnnotation(member)) {
 			private Description _description;
 
 			@Override
-			public void executeAction(Object receive,  String next, Executor executor) {
+			public void execute(Object receive,  String next, Executor executor) {
 				adapter.executeCommand(this, receive, executor, next);
 			}
 
@@ -359,19 +344,20 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			if (_description != null)
 				return _description;
 			return (_description = adapter.getDescription(this));
-		}		};
+			}	
+		};
 	}
 	
 	public Command<Class<?>, Member> newCommand(ConverterFactory loadFactory, Composite<Class<?>, Member> parent, String name, Member member) {
 		return newCommand(loadFactory, parent, name, (Method)member); // FIXME check
 	}
 	
-	public Command<Class<?>, Member> newCommand(ConverterFactory loadFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
-		final Converter<?>[] converters = fr.labri.shelly.impl.Converters.getConverters(loadFactory, method.getParameterTypes(), method.getParameterAnnotations());
+	public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
+		final Converter<?>[] converters = fr.labri.shelly.impl.Converters.getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations(), false);
 		return newCommand(name, parent, method, converters, new CommandAdapter() {
 			@Override
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
-				Object[] arguments = fr.labri.shelly.impl.Converters.convertArray(converters, text, executor.getCommandLine());
+				Object[] arguments = Converters.convertArray(text, converters, executor);
 				try {
 					method.invoke(grp, arguments);
 				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
@@ -386,30 +372,261 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		});
 	}
 
-	static OptionAdapter getFieldAdapter(final Field field) {
-		return new OptionAdapter() {
+	static OptionAdapter getFieldAdapter(ConverterFactory converterFactory, final Field field) {
+		Class<?> type = field.getType();
+		if (type.isArray()) {
+			return getFieldArrayAdapter(converterFactory, field);
+		} else if (Collection.class.isAssignableFrom(type)) {
+			return getFieldCollectionAdapter(converterFactory, field);
+		} else if (Map.class.isAssignableFrom(type)) {
+			return getFieldMapAdapter(converterFactory, field);
+		}
+		return getDirectAdapter(converterFactory, field);
+	}
+	
+	static OptionAdapter getFieldArrayAdapter(ConverterFactory converterFactory, final Field field) {
+		return new FieldNearlyCollectionOptionAdapter<Object[]>(converterFactory, field) {
+			protected Object[] newCollection() {
+				return (Object[]) Array.newInstance(type(field), 0);
+			}
+			
 			@Override
-			public void setOption(Option<Class<?>, Member> opt, Object receive, Object value) {
-				try {
-					field.set(receive, value);
-				} catch (IllegalArgumentException | IllegalAccessException e) {
-					throw new RuntimeException(e);
-				}
+			protected Class<?> type(Field field) {
+				return field.getType().getComponentType();
 			}
 
 			@Override
-			public Description getDescription(Triggerable<Class<?>, Member> abstractOption) {
-				return DescriptionFactory.getDescription(field, SUMMARY.getOption(field));
+			protected void add(Object[] array, Object converted) {// TODO rewrtie to avoid some array allocations
+				int len = array.length;
+				Object[] source = array;
+				Class<?> type = array.getClass().getComponentType();
+				array = (Object[]) Array.newInstance(type, len + 1);
+				array[array.length] = converted;
+				System.arraycopy(source, 0, array, 0, len);
 			}
 		};
 	}
 
-	static OptionAdapter getAccessorAdapter(final Method method) {
-		return new OptionAdapter() { // FIXME not robust
+	@SuppressWarnings("unchecked")
+	public static final Class<? extends Collection<?>>[] COLLECTION_TYPES = (Class<? extends Collection<?>>[]) new Class<?>[] { 
+		ArrayList.class,
+		Vector.class,
+		HashSet.class
+	};
+	
+	@SuppressWarnings("unchecked")
+	public static final Class<? extends Map<?, ?>>[] MAP_TYPES = (Class<? extends Map<?, ?>>[]) new Class<?>[] { 
+		LinkedHashMap.class,
+		HashMap.class
+	};
+
+	public static OptionAdapter getMap(Type type, Class<?> targetClass) {
+		ParameterizedType pt = (ParameterizedType)type;
+		Class<?> clazz = (Class<?>) (pt.getRawType());
+		Type[] at = pt.getActualTypeArguments();
+		if (!(at.length == 2 ||  at[0] instanceof Class && at[1] instanceof Class))
+			throw new RuntimeException("Map key/val types must (currently??) be classes");
+		Class<?> key = (Class<?>)at[0];
+		Class<?> val = (Class<?>)at[1];
+		
+		if (targetClass.isAssignableFrom(clazz)) {
+			for (Class<? extends Collection<?>> c: COLLECTION_TYPES) {
+				if(clazz.isAssignableFrom(c)) {
+					return getFieldMapAdapter(c, key, val);
+				}
+			}
+		}
+		return null;
+	}
+	
+	static OptionAdapter getFieldMapAdapter(Class<? extends Collection<?>> c, Class<?> key, Class<?> val)  {
+		return null ; // TODO
+	}
+	
+	public static <E> OptionAdapter getFieldMapAdapter(ConverterFactory factory, Field field) {
+		Class<?> clazz = field.getType();
+		Type type = field.getGenericType(); 
+		if (!(type instanceof ParameterizedType))
+			throw new RuntimeException("Map should have a two type declared and be " + Arrays.toString(MAP_TYPES)+ " or a super type of those");
+		Class<? extends Map<?, ?>> c = findClass(clazz, MAP_TYPES);
+		if(c == null)
+			return new FieldOptionMapAdapter(factory, field);
+		else
+			return getFieldNewableMapAdapter(factory, field, c);
+	}
+	
+	public static <E> OptionAdapter getFieldCollectionAdapter(ConverterFactory factory, Field field) {
+		Class<?> clazz = field.getType();
+		Type type = field.getGenericType(); 
+		if (!(type instanceof ParameterizedType))
+			throw new RuntimeException("Collections should have a single type declared and be " + Arrays.toString(COLLECTION_TYPES)+ " or a super type of those");
+		Class<? extends Collection<?>> c = findClass(clazz, COLLECTION_TYPES);
+		if(c == null)
+			return new FieldOptionCollectionAdapter(factory, field);
+		else
+			return getFieldNewableCollectionAdapter(factory, field, c);
+	}
+	
+	static <E> Class<? extends E> findClass(Class<?> clazz, Class<? extends E>[] list) {
+		for (Class<? extends E> c: list) {
+			if(clazz.isAssignableFrom(c)) {
+				return c;
+			}
+		}
+		return null;
+	}
+	
+
+	static OptionAdapter getFieldNewableMapAdapter(ConverterFactory factory, Field field, final Class<? extends Map<?, ?>> c)  {
+		return new FieldOptionMapAdapter(factory, field) {
+			@SuppressWarnings("unchecked")
 			@Override
-			public void setOption(Option<Class<?>, Member> opt, Object receive, Object value) {
+			protected Map<Object, Object> newCollection() {
 				try {
-					method.invoke(receive, value);
+					return (Map<Object, Object>) c.newInstance();
+				} catch (InstantiationException | IllegalAccessException e) {
+					throw new RuntimeException("Cannot instantiate collection associated with this object");
+				}
+			}
+		};
+	}
+
+	static OptionAdapter getFieldNewableCollectionAdapter(ConverterFactory factory, Field field, final Class<? extends Collection<?>> c)  {
+		return new FieldOptionCollectionAdapter(factory, field) {
+			@SuppressWarnings("unchecked")
+			@Override
+			protected Collection<Object> newCollection() {
+				try {
+					return (Collection<Object>) c.newInstance();
+				} catch (InstantiationException | IllegalAccessException e) {
+					throw new RuntimeException("Cannot instantiate collection associated with this object");
+				}
+			}
+		};
+	}
+	
+	static abstract class FieldNearlyCollectionOptionAdapter<C> extends FieldOptionAdapter {
+		public FieldNearlyCollectionOptionAdapter(ConverterFactory factory, Field f) {
+			super(factory, f);
+		}
+		@SuppressWarnings("unchecked")
+		@Override
+		public void set(Object receiver, Object converted) {
+			try {
+				C array = (C) field.get(receiver);
+				if (array == null) {
+					array = newCollection();
+					field.set(receiver, array);
+				}
+				add(array, converted);
+			} catch (IllegalArgumentException | IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		abstract protected void add(C array, Object converted);
+		protected C newCollection() {
+			throw new RuntimeException("There is no default constructor for this type, you should instancitate yourself in the constructor");
+		}
+	}
+	static class FieldOptionCollectionAdapter extends FieldNearlyCollectionOptionAdapter<Collection<Object>> {
+		public FieldOptionCollectionAdapter(ConverterFactory factory, Field f) {
+			super(factory, f);
+		}
+		
+		protected void add(Collection<Object> array, Object converted) {
+			array.add(converted);
+		}
+
+		protected Class<?> type(Field field) {
+			return findBound((ParameterizedType) field.getGenericType());
+		}
+		protected Class<?> findBound(ParameterizedType type) {
+			ParameterizedType pt = (ParameterizedType)type;
+			Type[] at = pt.getActualTypeArguments();
+			if (at.length != 1 &&  !(at[0] instanceof Class))
+				throw new RuntimeException("Collection type must (currently??) be classes");
+
+			return (Class<?>)at[0];
+		}
+	}
+	
+	static class FieldOptionMapAdapter extends FieldNearlyCollectionOptionAdapter<Map<Object, Object>> {
+		Converter<?>[] converters = new Converter<?>[2];
+		
+		public FieldOptionMapAdapter(ConverterFactory factory, Field f) {
+			super(factory, f);
+			converters = Converters.getConverters(factory, findBound((ParameterizedType)field.getGenericType()), true);
+		}
+		
+		protected Class<?> type(Field field) {
+			return Map.Entry.class;
+		}
+		protected Class<?>[] findBound(ParameterizedType type) {
+			ParameterizedType pt = (ParameterizedType)type;
+			Type[] at = pt.getActualTypeArguments();
+			if (!(at.length == 2 || at[0] instanceof Class || at[0] instanceof Class))
+				throw new RuntimeException("Map type must (currently??) be classes");
+
+			return new Class<?>[] { (Class<?>)at[0], (Class<?>)at[1] };
+		}
+
+		@Override
+		protected void add(Map<Object, Object> map, Object converted) {
+			@SuppressWarnings("unchecked")
+			Map.Entry<String, String> vals = (Map.Entry<String, String>)converted;
+			map.put(((SimpleConverter<?>)converters[0]).convert(vals.getKey()), // FIXME ugly and unsafe cast
+					((SimpleConverter<?>)converters[1]).convert(vals.getValue()));
+		}
+	}
+
+	static class FieldOptionAdapter implements OptionAdapter {
+		final Field field;
+		final Converter<?> converter;
+		
+		public FieldOptionAdapter(ConverterFactory factory, Field f) {
+			field = f;
+			converter = factory.getConverter(type(field), true);
+		}
+		
+		protected Class<?> type(Field field) {
+			return field.getType();
+		}
+
+		@Override
+		public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
+			try {
+				set(receive, converter.convert(text, executor));
+			} catch (IllegalArgumentException | IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		protected void set(Object receive, Object converted) throws IllegalArgumentException, IllegalAccessException {
+			field.set(receive, converted);
+		}
+
+		@Override
+		public Description getDescription(Triggerable<Class<?>, Member> abstractOption) {
+			return DescriptionFactory.getDescription(field, SUMMARY.getOption(field));
+		}
+
+		@Override
+		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
+			return converter.isValid(opt, recognizer, str, index);
+		}
+	};
+	static OptionAdapter getDirectAdapter(ConverterFactory converterFactory, final Field field) {
+		return new FieldOptionAdapter(converterFactory, field) {
+		};
+	}
+
+	static OptionAdapter getAccessorAdapter(ConverterFactory converterFactory, final Method method) {
+		final Converter<?> converters[] = Converters.getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations(), true);
+		return new OptionAdapter() {
+			@Override
+			public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
+				try {
+					method.invoke(receive, Converters.convertArray(text, converters, executor));
 				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
 					throw new RuntimeException(e);
 				}
@@ -417,6 +634,12 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
 			public Description getDescription(Triggerable<Class<?>, Member> abstractOption) {
 				return DescriptionFactory.getDescription(method, SUMMARY.getOption(method));
+			}
+			
+			@Override
+			public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
+				Converter<?> first = (converters.length == 0) ? Converters.STR_CONVERTER : converters[0];
+				return first.isValid(opt, recognizer, str, index);
 			}
 		};
 	}
@@ -429,25 +652,20 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		}
 
 		@Override
-		public Option<Class<?>, Member> newOption(ConverterFactory factory, Composite<Class<?>, Member> parent, String name, Field field) {
-			return _parent.newOption(factory, parent, name, field);
+		public Context<Class<?>, Member> newContext(String name, Composite<Class<?>, Member> parent, Class<?> clazz) {
+			return _parent.newContext(name, parent, clazz);
 		}
 
 		@Override
-		public Option<Class<?>, Member> newOption(ConverterFactory factory, Composite<Class<?>, Member> parent, String name, Method method) {
+		public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, Method method) {
+			return _parent.newCommand(converterFactory, parent, name, method);
+		}
+		
+		@Override
+		public Option<Class<?>, Member> newOption(ConverterFactory factory, Composite<Class<?>, Member> parent, String name, Member method) {
 			return _parent.newOption(factory, parent, name, method);
 		}
 
-		@Override
-		public Command<Class<?>, Member> newCommand(ConverterFactory loadFactory, Composite<Class<?>, Member> parent, String name, Method method) {
-			return _parent.newCommand(loadFactory, parent, name, method);
-		}
-
-		@Override
-		public Command<Class<?>, Member> newCommand(String name, Composite<Class<?>, Member> parent, Member member, Converter<?>[] converters,
-				CommandAdapter adapter) {
-			return _parent.newCommand(name, parent, member, converters, adapter);
-		}
 
 		@Override
 		public Group<Class<?>, Member> newGroup(String name, Composite<Class<?>, Member> parent, Class<?> clazz) {

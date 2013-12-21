@@ -14,7 +14,7 @@ public class Environ {
 	}
 	
 	public Object get(Composite<Class<?>, Member> composite) {
-		int i = last();
+		int i = size();
 		while(i-- > 0) {
 			Entry e = map.get(i);
 			if(e.key.equals(composite))
@@ -28,10 +28,12 @@ public class Environ {
 	}
 
 	public Object getLast() {
-		return map.get(last());
+		if (map.isEmpty())
+			return null;
+		return map.get(last()).val;
 	}
 
-	public Object fetch(Terminal<Class<?>, Member> terminal) {
+	public Object get(Terminal<Class<?>, Member> terminal) {
 		return get(terminal.getParent());
 	}
 

@@ -45,6 +45,7 @@ public abstract class AbstractComposite<C, M> extends AbstractItem<C, M> impleme
 	}
 	
 	@Override
-	public void instantiateObject(Environ environ) {
+	public Object instantiateObject(Object parent) {
+		return null;
 	}
 }
