@@ -11,11 +11,11 @@ public interface Recognizer {
 	int isShortOption(String cmd);
 
 	int isLongOptionValid(String cmd, Option<?, ?> option);
-	int isShortOptionValid(String cmd, Option<?, ?> option);
+	boolean isShortOptionValid(char cmd, Option<?, ?> option);
 	int isActionValid(String cmd, Action<?, ?> option);
 	
 	// Assume isLongOption == true
-	boolean getBooleanValue(String cmd);
+	boolean getBooleanValue(String cmd, Option<?, ?> option);
 	int isLongBooleanOptionValid(String str, Option<?, ?> option);
 	
 	public static final Recognizer GNUNonStrict = new AbstractRecognizer() {
@@ -54,8 +54,8 @@ public interface Recognizer {
 		}
 		
 		@Override
-		public int isShortOptionValid(String cmd, Option<?, ?> option) {
-			return -1; // TODO adapter.isValidShort()
+		public boolean isShortOptionValid(char cmd, Option<?, ?> option) {
+			return option.getFlags().indexOf(cmd) >= 0;
 		}
 
 		@Override
@@ -80,7 +80,12 @@ public interface Recognizer {
 		}	
 
 		@Override
-		public boolean getBooleanValue(String cmd) {
+		public boolean getBooleanValue(String cmd, Option<?, ?> option) {
+			if(cmd.length() == 1) {
+				int i = option.getFlags().indexOf(cmd);
+				if (i >= 0)
+					return i % 2 == 0;
+			}
 			return !cmd.startsWith(no_flag, longOptionPrefix.length());
 		}
 		

@@ -44,4 +44,8 @@ public class PeekIterator<T> implements Iterator<T> {
 	public void remove() {
 		throw new UnsupportedOperationException();
 	}
+
+	public void replace(T newLookAhead) {
+		_lookahead = newLookAhead;
+	}
 }

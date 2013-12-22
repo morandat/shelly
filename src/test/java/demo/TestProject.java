@@ -9,8 +9,8 @@ import fr.labri.shelly.annotations.*;
 
 @Group
 public class TestProject {
-	@Option public boolean verbose;
-	@Option public int level;
+	@Option(flags="vV") public boolean verbose;
+	@Option(flags="l") public int level;
 	@Command public void test1(int nb) {
 		System.out.printf("%b %d -- %d\n", verbose, level, nb);
 	}

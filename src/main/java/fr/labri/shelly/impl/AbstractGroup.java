@@ -25,7 +25,7 @@ public abstract class AbstractGroup<C, M> extends AbstractComposite<C, M> implem
 	}
 	
 	@Override
-	public int isValid(Recognizer parser, String str, int index) {
+	public int isValidLongOption(Recognizer parser, String str, int index) {
 		return StringUtils.startWith(str, _id, index);
 	}
 	

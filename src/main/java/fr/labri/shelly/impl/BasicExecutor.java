@@ -151,25 +151,66 @@ public abstract class BasicExecutor {
 			if (!cmdline.hasNext())
 				return;
 
-			String peek = cmdline.peek();
 			Recognizer reco = _recognizer;
-			if (reco.stopOptionParsing(peek)) {
-				cmdline.next(); // consume token and stop parsing
-			} else { // TODO add short options
-				Option<Class<?>, Member> option;
-				while (cmdline.hasNext() && reco.isLongOption(peek) >= 0 && (option = findOption(action)) != null)
+			Option<Class<?>, Member> option;
+			while (cmdline.hasNext()) {
+				String peek = cmdline.peek();
+				if (reco.stopOptionParsing(peek)) {
+					cmdline.next(); // consume token and stop parsing
+					break;
+				} else if (reco.isLongOption(peek) >= 0 && (option = findOption(action, peek)) != null) {
 					option.execute(_environ.get(option), cmdline.next(), this);
+				} else if (reco.isShortOption(peek) >= 0) {
+					int i = 0;
+					while(++i < peek.length() && (option = findOption(action, peek.charAt(i))) != null) {
+						String sentinel = null;
+						if ((i+1) < peek.length()) {
+							sentinel = peek.substring(i + 1);
+							getCommandLine().replace(sentinel);
+						} else
+							getCommandLine().next();
+							
+						option.execute(_environ.get(option), Character.toString(peek.charAt(i)), this);
+						if(getCommandLine().peek() != sentinel)
+							break;
+					}
+				} else
+					break;
 			}
 		}
 
 		@SuppressWarnings("unchecked")
-		public Option<Class<?>, Member> findOption(Action<Class<?>, Member> cmd) {
+		public Option<Class<?>, Member> findOption(Action<Class<?>, Member> cmd, final String key) {
 			try {
 				cmd.startVisit(new OptionVisitor<Class<?>, Member>() {
 					public void visit(Option<Class<?>, Member> opt) {
 						if (!getMode().isIgnored(opt))
 //							if (getRecognizer().isLongOptionValid(getCommandLine().peek(), opt) >= 0) {
-							if (opt.isValid(getRecognizer(), getCommandLine().peek(), 2) >= 0) { // FIXME
+							if (opt.isValidLongOption(getRecognizer(), key, 2) >= 0) { // FIXME
+								throw new FoundOption(opt);
+							}
+					}
+
+					@Override
+					public void visit(Group<Class<?>, Member> grp) {
+						if (!getRecognizer().strictOptions())
+							visit((Composite<Class<?>, Member>) grp);
+					}
+				});
+			} catch (FoundOption e) {
+				return (Option<Class<?>, Member>) e.opt;
+			}
+			return null;
+		}
+		
+		@SuppressWarnings("unchecked")
+		public Option<Class<?>, Member> findOption(Action<Class<?>, Member> cmd, final char f) {
+			try {
+				cmd.startVisit(new OptionVisitor<Class<?>, Member>() {
+					public void visit(Option<Class<?>, Member> opt) {
+						if (!getMode().isIgnored(opt))
+//							if (getRecognizer().isLongOptionValid(getCommandLine().peek(), opt) >= 0) {
+							if (opt.isValidShortOption(getRecognizer(), f)) { // FIXME
 								throw new FoundOption(opt);
 							}
 					}

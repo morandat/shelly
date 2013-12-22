@@ -74,7 +74,7 @@ public class HelpFactory {
 					
 				}
 				@Override
-				public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
+				public int isValidLongOption(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
 					return recognizer.isLongOptionValid(str, opt);
 				}
 			});

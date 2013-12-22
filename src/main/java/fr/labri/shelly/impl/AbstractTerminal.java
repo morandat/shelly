@@ -15,7 +15,7 @@ public abstract class AbstractTerminal<C, M> extends AbstractItem<C, M> implemen
 		}
 
 		@Override
-		public int isValid(Recognizer parser, String str, int index) {
+		public int isValidLongOption(Recognizer parser, String str, int index) {
 			return StringUtils.startWith(str, _id, index);
 		
 		}

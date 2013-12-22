@@ -31,6 +31,7 @@ import fr.labri.shelly.Group;
 import fr.labri.shelly.Item;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
+import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Terminal;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.impl.AbstractGroup;

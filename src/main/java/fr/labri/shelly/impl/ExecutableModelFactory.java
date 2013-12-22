@@ -159,7 +159,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	
 	public interface OptionAdapter extends TriggerableAdapter {
 		public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text);
-		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index);
+		public int isValidLongOption(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index);
 	}
 	
 	public interface CommandAdapter extends ActionAdapter {
@@ -291,10 +291,10 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		return new AbstractOption<Class<?>, Member>(parent, name, member, AnnotationUtils.extractAnnotation(member)) {
 			private Description _description;
 			@Override
-			public int isValid(Recognizer recognizer, String str, int index) {
-				return adapter.isValid(this, recognizer, str, index);
+			public int isValidLongOption(Recognizer recognizer, String str, int index) {
+				return adapter.isValidLongOption(this, recognizer, str, index);
 			}
-
+			
 			@Override
 			public void execute(Object receive, String next, Executor executor) {
 				adapter.executeOption(this, receive, executor, next);
@@ -344,12 +344,12 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			if (_description != null)
 				return _description;
 			return (_description = adapter.getDescription(this));
-			}	
+			}
 		};
 	}
 	
-	public Command<Class<?>, Member> newCommand(ConverterFactory loadFactory, Composite<Class<?>, Member> parent, String name, Member member) {
-		return newCommand(loadFactory, parent, name, (Method)member); // FIXME check
+	public Command<Class<?>, Member> newCommand(ConverterFactory factory, Composite<Class<?>, Member> parent, String name, Member member) {
+		return newCommand(factory, parent, name, (Method)member); // FIXME check
 	}
 	
 	public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
@@ -376,7 +376,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		Class<?> type = field.getType();
 		if (type.isArray()) {
 			return getFieldArrayAdapter(converterFactory, field);
-		} else if (Boolean.class.isAssignableFrom(type)) {
+		} else if (boolean.class.equals(type) || Boolean.class.equals(type)) {
 			return getBooleanFieldAdapter(field);
 		} else if (Collection.class.isAssignableFrom(type)) {
 			return getFieldCollectionAdapter(converterFactory, field);
@@ -385,7 +385,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		}
 		return getDirectAdapter(converterFactory, field);
 	}
-	
+
 	static OptionAdapter getFieldArrayAdapter(ConverterFactory converterFactory, final Field field) {
 		return new FieldNearlyCollectionOptionAdapter<Object[]>(converterFactory, field) {
 			protected Object[] newCollection() {
@@ -613,7 +613,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		}
 
 		@Override
-		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
+		public int isValidLongOption(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
 			return recognizer.isLongOptionValid(str, opt);
 		}
 	};
@@ -622,12 +622,12 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		};
 	}
 	static abstract class BooleanOptionAdapter implements OptionAdapter {
-		protected boolean value(Executor executor, String text) throws IllegalArgumentException, IllegalAccessException {
-			return executor.getRecognizer().getBooleanValue(text);
+		protected boolean value(Option<?, ?> opt, Executor executor, String text) throws IllegalArgumentException, IllegalAccessException {
+			return executor.getRecognizer().getBooleanValue(text, opt);
 		}
 		
 		@Override
-		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
+		public int isValidLongOption(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
 			return recognizer.isLongBooleanOptionValid(str, opt);
 		}
 	}
@@ -636,13 +636,12 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			@Override
 			public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
 				try {
-					field.set(receive, value(executor, text));
+					field.set(receive, value(opt, executor, text));
 
 				} catch (IllegalArgumentException | IllegalAccessException e) {
 					throw new RuntimeException(e);
 				}
 			}
-			
 
 			public Description getDescription(Triggerable<Class<?>, Member> abstractOption) {
 				return DescriptionFactory.getDescription(field, SUMMARY.getOption(field));
@@ -676,7 +675,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
 			Object[] params = new Object[converters.length + 1];
 			try {
-				params[0] = value(executor, text);
+				params[0] = value(opt, executor, text);
 				if (converters.length > 0) {
 					for (int i = 0; i < converters.length ; i ++)
 						params[i + 1] = converters[i].convert(executor);
@@ -708,9 +707,13 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		public Description getDescription(Triggerable<Class<?>, Member> abstractOption) {
 			return DescriptionFactory.getDescription(method, SUMMARY.getOption(method));
 		}
-		public int isValid(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
+		public int isValidLongOption(Option<Class<?>, Member> opt, Recognizer recognizer, String str, int index) {
 			return recognizer.isLongOptionValid(str, opt);
 		}
+		public boolean isValidShortOption(Option<Class<?>, Member> opt, Recognizer recognizer, char flag, int index) {
+			return recognizer.isShortOptionValid(flag, opt);
+		}
+
 	}
 	
 	static class AbstractModelFactory extends ExecutableModelFactory {
