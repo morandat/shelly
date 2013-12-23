@@ -10,11 +10,11 @@ import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
 import fr.labri.shelly.impl.Environ;
 import fr.labri.shelly.impl.PeekIterator;
-import fr.labri.shelly.impl.VisitorAdapter;
-import fr.labri.shelly.impl.VisitorAdapter.ActionVisitor;
-import fr.labri.shelly.impl.VisitorAdapter.FoundCommand;
-import fr.labri.shelly.impl.VisitorAdapter.FoundOption;
-import fr.labri.shelly.impl.VisitorAdapter.OptionVisitor;
+import fr.labri.shelly.Visitor.VisitorAdapter;
+import fr.labri.shelly.Visitor.ActionVisitor;
+import fr.labri.shelly.Visitor.FoundCommand;
+import fr.labri.shelly.Visitor.FoundOption;
+import fr.labri.shelly.Visitor.OptionVisitor;
 
 public interface Executor {
 
@@ -26,7 +26,7 @@ public interface Executor {
 	public abstract void execute(Group<Class<?>, Member> start);
 	public abstract void error(Composite<Class<?>, Member> grp);
 
-	static public abstract class BasicExecutor {
+	public abstract class BasicExecutor {
 		final Recognizer _recognizer;
 
 		public BasicExecutor(Recognizer parser) {

@@ -32,7 +32,7 @@ public interface ConverterFactory {
 		new MapEntryConverter()
 	};
 
-	public static class BasicConverters implements ConverterFactory {
+	public class BasicConverters implements ConverterFactory {
 		
 		@SuppressWarnings("unchecked")
 		public Converter<?> getConverter(Class<?> type) {
@@ -60,7 +60,7 @@ public interface ConverterFactory {
 		}
 	}
 
-	public static class CompositeFactory implements ConverterFactory {
+	public class CompositeFactory implements ConverterFactory {
 		final ConverterFactory[] _factories;
 		final ConverterFactory _parent;
 		public CompositeFactory(ConverterFactory[] factories, ConverterFactory parent) {
@@ -81,7 +81,7 @@ public interface ConverterFactory {
 		}
 	}
 	
-	static abstract class PrimitiveConverterFactory<T> {
+	abstract class PrimitiveConverterFactory<T> {
 		Class<T> type, primitiveType;
 		PrimitiveConverterFactory(Class<T> type, Class<T> primitiveType) {
 			this.type = type; 
@@ -113,7 +113,8 @@ public interface ConverterFactory {
 		}
 		abstract public T convertValue(String cmd);
 	};
-	static class BooleanFactory extends PrimitiveConverterFactory<Boolean>{
+	
+	class BooleanFactory extends PrimitiveConverterFactory<Boolean>{
 		BooleanFactory() {
 			super(Boolean.class, boolean.class);
 		}
@@ -123,7 +124,8 @@ public interface ConverterFactory {
 			return Boolean.parseBoolean(cmd);
 		}
 	}
-	static class IntFactory extends PrimitiveConverterFactory<Integer>{
+	
+	class IntFactory extends PrimitiveConverterFactory<Integer>{
 		IntFactory() {
 			super(Integer.class, int.class);
 		}
@@ -133,7 +135,8 @@ public interface ConverterFactory {
 			return Integer.parseInt(cmd);
 		}
 	}
-	static class ShortFactory extends PrimitiveConverterFactory<Short>{
+	
+	class ShortFactory extends PrimitiveConverterFactory<Short>{
 		ShortFactory() {
 			super(Short.class, short.class);
 		}
@@ -143,7 +146,7 @@ public interface ConverterFactory {
 			return Short.parseShort(cmd);
 		}
 	}
-	static class LongFactory extends PrimitiveConverterFactory<Long>{
+	class LongFactory extends PrimitiveConverterFactory<Long>{
 		LongFactory() {
 			super(Long.class, long.class);
 		}

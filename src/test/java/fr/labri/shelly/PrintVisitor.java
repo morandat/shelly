@@ -1,7 +1,7 @@
 package fr.labri.shelly;
 
 import fr.labri.shelly.impl.HelpFactory;
-import fr.labri.shelly.impl.VisitorAdapter;
+import fr.labri.shelly.Visitor.VisitorAdapter;
 
 public class PrintVisitor<C, M> extends VisitorAdapter<C, M> {
 	public void print(Group<C, M> grp) {

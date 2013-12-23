@@ -31,7 +31,6 @@ import fr.labri.shelly.Group;
 import fr.labri.shelly.Item;
 import fr.labri.shelly.ModelFactory;
 import fr.labri.shelly.Option;
-import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Terminal;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.impl.AbstractGroup;
@@ -44,7 +43,7 @@ import fr.labri.shelly.impl.DescriptionFactory;
 import fr.labri.shelly.impl.ExecutableModelFactory;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelBuilder;
-import fr.labri.shelly.impl.VisitorAdapter;
+import fr.labri.shelly.Visitor.*;
 import fr.labri.shelly.impl.AnnotationUtils.ElementValue;
 import static fr.labri.shelly.ModelFactory.*;
 

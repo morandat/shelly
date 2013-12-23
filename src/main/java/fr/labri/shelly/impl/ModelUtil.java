@@ -6,9 +6,7 @@ import fr.labri.shelly.Group;
 import fr.labri.shelly.Item;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Recognizer;
-import fr.labri.shelly.impl.VisitorAdapter.FoundCommand;
-import fr.labri.shelly.impl.VisitorAdapter.FoundOption;
-import fr.labri.shelly.impl.VisitorAdapter.OptionVisitor;
+import fr.labri.shelly.Visitor.*;
 
 public class ModelUtil {
 

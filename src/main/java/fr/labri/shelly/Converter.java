@@ -14,7 +14,7 @@ public interface Converter<T> {
 
 	public abstract Class<? super T> convertedType();
 	
-	static class MapEntryConverter implements Converter<Map.Entry<String, String>> {
+	public class MapEntryConverter implements Converter<Map.Entry<String, String>> {
 		String getMapSeparator() {
 			return "=";
 		}
@@ -34,7 +34,7 @@ public interface Converter<T> {
 		}
 	}
 
-	static class ArrayConverter<E> implements Converter<E[]> {
+	public class ArrayConverter<E> implements Converter<E[]> {
 		final Converter<? extends E> _converter;
 		
 		public ArrayConverter(Converter<E> converter) {
@@ -57,7 +57,7 @@ public interface Converter<T> {
 		}
 	};
 	
-	public static abstract class SimpleConverter<T> implements Converter<T> {
+	public abstract class SimpleConverter<T> implements Converter<T> {
 		final public T convert(Executor executor) {
 			try {
 				return convert(executor.getCommandLine().next());
