@@ -6,25 +6,25 @@ import fr.labri.shelly.Group;
 import fr.labri.shelly.Item;
 import fr.labri.shelly.Option;
 import fr.labri.shelly.Recognizer;
-import fr.labri.shelly.impl.Visitor.FoundCommand;
-import fr.labri.shelly.impl.Visitor.FoundOption;
-import fr.labri.shelly.impl.Visitor.OptionVisitor;
+import fr.labri.shelly.impl.VisitorAdapter.FoundCommand;
+import fr.labri.shelly.impl.VisitorAdapter.FoundOption;
+import fr.labri.shelly.impl.VisitorAdapter.OptionVisitor;
 
 public class ModelUtil {
 
 	@SuppressWarnings("unchecked")
 	public static <C,M> Action<C, M> findAction(Action<C, M> start, final Recognizer parser, final String cmd) {
 		try {
-			Visitor<C, M> v = new Visitor.ActionVisitor<C, M>() {
+			VisitorAdapter<C, M> v = new VisitorAdapter.ActionVisitor<C, M>() {
 				@Override
 				public void visit(Action<C, M> grp) {
 					if (parser.isActionValid(cmd, grp) >= 0) {
-						throw new Visitor.FoundCommand(grp);
+						throw new VisitorAdapter.FoundCommand(grp);
 					}
 				}
 			};
 			start.startVisit(v);
-		} catch (Visitor.FoundCommand e) {
+		} catch (VisitorAdapter.FoundCommand e) {
 			return (Action<C, M>) e.cmd;
 		}
 		return null;
@@ -33,7 +33,7 @@ public class ModelUtil {
 	@SuppressWarnings("unchecked")
 	public static <C,M> Group<C, M> findGroup(Item<C, M> start) {
 		try {
-		start.accept(new Visitor<C, M>() {
+		start.accept(new VisitorAdapter<C, M>() {
 			@Override
 			public void visit(Item<C, M> i) {
 				visit_parent(i);

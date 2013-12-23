@@ -6,8 +6,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
+import fr.labri.shelly.Executor.BasicExecutor;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
-import fr.labri.shelly.impl.BasicExecutor;
 import fr.labri.shelly.impl.Environ;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.PeekIterator;

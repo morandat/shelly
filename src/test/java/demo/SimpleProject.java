@@ -10,9 +10,9 @@ import java.util.Set;
 import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.ConverterFactory;
-import fr.labri.shelly.impl.Converters.SimpleConverter;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelUtil;
+import fr.labri.shelly.Action;
 import fr.labri.shelly.CommandLine;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.Recognizer;
@@ -61,9 +61,9 @@ public class SimpleProject {
 		if (cmds.length == 0) {
 			shell.printHelp(System.out);
 		} else {
-			fr.labri.shelly.Action<Class<?>, Member> parent = shell.getRoot();
+			Action<Class<?>, Member> parent = shell.getRoot();
 			for (int i = 0; i < cmds.length; i++) {
-				fr.labri.shelly.Action<Class<?>, Member> cmd = ModelUtil.findAction(parent, Recognizer.GNUNonStrict, cmds[i]);
+				Action<Class<?>, Member> cmd = ModelUtil.findAction(parent, Recognizer.GNUNonStrict, cmds[i]);
 				if (cmd == null) {
 					System.out.println("No topic " + cmds[i]);
 					break;
@@ -177,7 +177,7 @@ public class SimpleProject {
 	static public class MyFactory implements ConverterFactory {
 		public Converter<?> getConverter(Class<?> type) {
 			if (type.isAssignableFrom(Color.class))
-				return new SimpleConverter<Color>() {
+				return new Converter.SimpleConverter<Color>() {
 					@Override
 					public Color convert(String value) {
 						return new Color(253); //

@@ -19,11 +19,11 @@ import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.Triggerable;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
-import fr.labri.shelly.impl.Converters.ArrayConverter;
+import fr.labri.shelly.Converter.ArrayConverter;
 import fr.labri.shelly.impl.ExecutableModelFactory.CommandAdapter;
 
 public class HelpFactory {
-	static public class Factory extends fr.labri.shelly.impl.ExecutableModelFactory.AbstractModelFactory {
+	static public class Factory extends ExecutableModelFactory.AbstractModelFactory {
 		public Factory(ExecutableModelFactory parent) {
 			super(parent);
 		}
@@ -31,7 +31,7 @@ public class HelpFactory {
 		@Override
 		public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
 			@SuppressWarnings("unchecked")
-			final Converter<String[]> converter = new fr.labri.shelly.impl.Converters.ArrayConverter<String>((Converter<String>) converterFactory.getConverter(String.class));
+			final Converter<String[]> converter = new ArrayConverter<String>((Converter<String>) converterFactory.getConverter(String.class));
 			HelpNavigator navigator = NAVIGATOR;
 			HelpFormater formater = FORMATER;
 			HelpRenderer renderer = RENDERER;
@@ -103,7 +103,7 @@ public class HelpFactory {
 	}
 
 	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> item) {
-		return getHelpCommand(item, "help", fr.labri.shelly.impl.Converters.DEFAULT);
+		return getHelpCommand(item, "help", ExecutableModelFactory.DEFAULT);
 	}
 
 	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> item, final String name, ConverterFactory factory) {
@@ -113,7 +113,7 @@ public class HelpFactory {
 	static public Command<Class<?>, Member> getHelpCommand(Composite<Class<?>, Member> parent, final String name, ConverterFactory factory, final HelpNavigator navigator,
 			final HelpFormater formater, final HelpRenderer renderer) {
 		@SuppressWarnings("unchecked")
-		final Converter<String[]> converter =  new fr.labri.shelly.impl.Converters.ArrayConverter<String>((Converter<String>) factory.getConverter(String.class));
+		final Converter<String[]> converter =  new ArrayConverter<String>((Converter<String>) factory.getConverter(String.class));
 		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, null /*FIXME*/, converter, getHelpCommandAdapter(converter, navigator, formater, renderer));
 	}
 
@@ -121,7 +121,7 @@ public class HelpFactory {
 		return new CommandAdapter() {
 			@Override
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, Executor executor, String next) {
-				ArrayConverter<String> args = new fr.labri.shelly.impl.Converters.ArrayConverter<String>(Converters.STR_CONVERTER);
+				ArrayConverter<String> args = new ArrayConverter<String>(ConverterFactory.STR_CONVERTER);
 				String[] query = args.convert(executor);
 				Triggerable<Class<?>, Member> item = navigator.findTopic(ModelUtil.findGroup(cmd), executor.getRecognizer(), query);
 				printHelp(item, System.out, formater, renderer);
@@ -175,7 +175,7 @@ public class HelpFactory {
 		@Override
 		public <C, M> HelpContext getHelp(Triggerable<C, M> item) {
 			final HelpContext help = new HelpContext();
-			item.accept(new Visitor<C, M>() {
+			item.accept(new VisitorAdapter<C, M>() {
 				public void visit(Group<C, M> grp) {
 					Description d =  grp.getDescription();
 					help.addTitle("Description");

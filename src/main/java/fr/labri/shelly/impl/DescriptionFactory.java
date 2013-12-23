@@ -18,7 +18,7 @@ import fr.labri.shelly.Group;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
 import fr.labri.shelly.annotations.Option;
 import fr.labri.shelly.annotations.Param;
-import fr.labri.shelly.impl.Visitor.ActionVisitor;
+import fr.labri.shelly.impl.VisitorAdapter.ActionVisitor;
 import static fr.labri.shelly.impl.AnnotationUtils.*;
 
 public class DescriptionFactory {

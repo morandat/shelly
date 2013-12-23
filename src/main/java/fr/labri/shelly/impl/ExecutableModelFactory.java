@@ -1,5 +1,6 @@
 package fr.labri.shelly.impl;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -23,6 +24,7 @@ import fr.labri.shelly.Command;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Context;
 import fr.labri.shelly.Converter;
+import fr.labri.shelly.Converter.SimpleConverter;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Description;
 import fr.labri.shelly.Executor;
@@ -32,8 +34,8 @@ import fr.labri.shelly.Option;
 import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.Triggerable;
+import fr.labri.shelly.annotations.Param;
 import fr.labri.shelly.impl.AnnotationUtils.ReflectValue;
-import fr.labri.shelly.impl.Converters.SimpleConverter;
 
 public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 
@@ -74,8 +76,8 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		}
 
 		static private class ExecutableBuilder extends ModelBuilder.Builder<Class<?>, Member> {
-			ExecutableModelFactory _parentFactory = ExecutableModelFactory.EXECUTABLE_MODEL;
-			ConverterFactory _parentConverter = fr.labri.shelly.impl.Converters.DEFAULT;
+			ExecutableModelFactory _parentFactory = EXECUTABLE_MODEL;
+			ConverterFactory _parentConverter = DEFAULT;
 
 			@Override
 			public void visit(Composite<Class<?>, Member> optionGroup) {
@@ -115,7 +117,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			}
 			
 			protected ExecutableModelFactory getFactory(Class<? extends ExecutableModelFactory> factory) {
-				return ExecutableModelFactory.loadModelFactory(_parentFactory, factory);
+				return loadModelFactory(_parentFactory, factory);
 			}
 
 			public Context<Class<?>, Member> createContext(Composite<Class<?>, Member> parent, fr.labri.shelly.annotations.Context annotation, Class<?> clazz) {
@@ -143,7 +145,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 //				if (classes.length < 1 || BasicConverter.class.equals(classes[0]))
 				if(classes == null)
 					return _parentConverter;
-				return fr.labri.shelly.impl.Converters.getComposite(_parentConverter, classes);
+				return getComposite(_parentConverter, classes);
 			}
 
 			@Override
@@ -214,6 +216,15 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		}
 		abstract void executeGroup(AbstractGroup<Class<?>, Member> cmd, Object grp, Executor executor, String text);
 	}
+
+	static Cache<ConverterFactory> cache = new ExecutableModelFactory.Cache<ConverterFactory>(){
+		@Override
+		ConverterFactory newItem(Class<ConverterFactory> clazz) throws InstantiationException, IllegalAccessException {
+			return clazz.newInstance();
+		}
+	};
+
+	final static public ConverterFactory DEFAULT = new ConverterFactory.BasicConverters();
 
 	public Context<Class<?>, Member> newContext(String name, Composite<Class<?>, Member> parent, Class<?> clazz, final CompositeAdapter adapter) {
 		return new AbstractContext<Class<?>, Member>(parent, name, clazz, AnnotationUtils.extractAnnotation(clazz)) {
@@ -353,11 +364,11 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 	}
 	
 	public Command<Class<?>, Member> newCommand(ConverterFactory converterFactory, Composite<Class<?>, Member> parent, String name, final Method method) {
-		final Converter<?>[] converters = fr.labri.shelly.impl.Converters.getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations());
+		final Converter<?>[] converters = getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations());
 		return newCommand(name, parent, method, converters, new CommandAdapter() {
 			@Override
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object grp, Executor executor, String text) {
-				Object[] arguments = Converters.convertArray(text, converters, executor);
+				Object[] arguments = convertArray(text, converters, executor);
 				try {
 					method.invoke(grp, arguments);
 				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
@@ -557,7 +568,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		
 		public FieldOptionMapAdapter(ConverterFactory factory, Field f) {
 			super(factory, f);
-			converters = Converters.getConverters(factory, findBound((ParameterizedType)field.getGenericType()));
+			converters = getConverters(factory, findBound((ParameterizedType)field.getGenericType()));
 		}
 		
 		protected Class<?> type(Field field) {
@@ -665,7 +676,7 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 			this.method = method;
 			Class<?>[] types = method.getParameterTypes();
 			Class<?>[] params = Arrays.copyOfRange(types, 1, types.length);
-			converters = Converters.getConverters(factory, params);
+			converters = getConverters(factory, params);
 		}
 		public Description getDescription(Triggerable<Class<?>, Member> abstractOption) {
 			return DescriptionFactory.getDescription(method, SUMMARY.getOption(method));
@@ -692,13 +703,13 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		final Converter<?> converters[];
 		public OptionFieldAccessorAdapter(ConverterFactory converterFactory, Method method) {
 			this.method = method;
-			converters = Converters.getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations());
+			converters = getConverters(converterFactory, method.getParameterTypes(), method.getParameterAnnotations());
 		}
 
 		@Override
 		public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
 			try {
-				method.invoke(receive, Converters.convertArray(text, converters, executor));
+				method.invoke(receive, convertArray(text, converters, executor));
 			} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException(e);
 			}
@@ -751,6 +762,24 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		}
 	}
 
+	static abstract class Cache<E> {
+		Map<Class<E>, E> _objects = new HashMap<Class<E>, E>();
+	
+		@SuppressWarnings("unchecked")
+		public E newFactory(Class<? extends E> clazz) {
+			if(_objects.containsKey(clazz))
+				return _objects.get(clazz);
+			try {
+				E o = newItem((Class<E>) clazz);
+				_objects.put( (Class<E>) clazz, o);
+				return o; 
+			} catch (InstantiationException | IllegalAccessException e) {
+				throw new RuntimeException(String.format("Cannot instantiate factory: %s", clazz));
+			}
+		}
+		abstract E newItem(Class<E> clazz) throws InstantiationException, IllegalAccessException; // clazz.newInstance()
+	}
+
 	ExecutableModelFactory instantiateFactory(Class<? extends ExecutableModelFactory> clazz) {
 		try {
 			Constructor<? extends ExecutableModelFactory> c = clazz.getConstructor(ExecutableModelFactory.class);
@@ -764,6 +793,44 @@ public class ExecutableModelFactory implements ModelFactory<Class<?>, Member> {
 		}
 	}
 	
+	public static Object[] convertArray(String cmd, Converter<?>[] converters, Executor executor) {
+		Object[] res = new Object[converters.length];
+		int i = 0;
+		for(Converter<?> converter : converters)
+			res[i++] = converter.convert(executor);
+		return res;
+	}
+
+	public static ConverterFactory getComposite(ConverterFactory parent, Class<? extends ConverterFactory>[] newFactory) {
+		ConverterFactory[] factories = new ConverterFactory[newFactory.length];
+		for(int i = 0; i < newFactory.length; i ++)
+			factories[i] = cache.newFactory(newFactory[i]);
+		return new ConverterFactory.CompositeFactory(factories, parent);
+	}
+
+	static Converter<?>[] getConverters(ConverterFactory factory, Class<?>[] params, Annotation[][] annotations) {
+		int i = 0;
+		Converter<?>[] converters = new Converter<?>[params.length];
+		for (Class<?> a : params) {
+			ConverterFactory f = factory;
+			Class<? extends ConverterFactory> c;
+			Param pa = AnnotationUtils.getAnnotation(annotations[i], Param.class);
+			if(pa != null && !ConverterFactory.class.equals(c = pa.converter()))
+				f = cache.newFactory(c);
+			
+			converters[i++] =  ((f == null) ? factory : f).getConverter(a);
+		}
+		return converters;
+	}
+
+	static Converter<?>[] getConverters(ConverterFactory factory, Class<?>[] params) {
+		int i = 0;
+		Converter<?>[] converters = new Converter<?>[params.length];
+		for (Class<?> a : params)
+			converters[i++] = factory.getConverter(a);
+		return converters;
+	}
+
 	static boolean isEnclosed(Class<?> clazz) {
 		return clazz.isMemberClass() && !Modifier.isStatic(clazz.getModifiers());
 	}

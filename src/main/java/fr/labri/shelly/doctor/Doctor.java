@@ -44,7 +44,7 @@ import fr.labri.shelly.impl.DescriptionFactory;
 import fr.labri.shelly.impl.ExecutableModelFactory;
 import fr.labri.shelly.impl.HelpFactory;
 import fr.labri.shelly.impl.ModelBuilder;
-import fr.labri.shelly.impl.Visitor;
+import fr.labri.shelly.impl.VisitorAdapter;
 import fr.labri.shelly.impl.AnnotationUtils.ElementValue;
 import static fr.labri.shelly.ModelFactory.*;
 
@@ -100,7 +100,7 @@ public class Doctor extends AbstractProcessor {
 		return grp;
 	}
 
-	class PrintHelpVisitor extends Visitor.TraversalVisitor<TypeElement, Element> {
+	class PrintHelpVisitor extends VisitorAdapter.TraversalVisitor<TypeElement, Element> {
 		public void visit(Context<TypeElement, Element> i) {
 			super.visit(i);
 		}
@@ -127,7 +127,7 @@ public class Doctor extends AbstractProcessor {
 	}
 
 	private void checkModel(Group<TypeElement, Element> model, final boolean strict) {
-		new Visitor<TypeElement, Element>() {
+		new VisitorAdapter<TypeElement, Element>() {
 			ArrayList<Map<String, Element>> _options = new ArrayList<>();
 			ArrayList<Map<String, Element>> _commands = new ArrayList<>();
 			
@@ -137,7 +137,7 @@ public class Doctor extends AbstractProcessor {
 				visit(model);
 			}
 			
-			Visitor<TypeElement, Element> action_visitor = new Visitor<TypeElement, Element>() {
+			VisitorAdapter<TypeElement, Element> action_visitor = new VisitorAdapter<TypeElement, Element>() {
 				@Override
 				public void visit(Command<TypeElement, Element> item) {
 					addItem(item, item.getAssociatedElement(), _commands, Kind.ERROR);
@@ -148,7 +148,7 @@ public class Doctor extends AbstractProcessor {
 				}
 			};
 			
-			Visitor<TypeElement, Element> option_visitor = new Visitor<TypeElement, Element>() {
+			VisitorAdapter<TypeElement, Element> option_visitor = new VisitorAdapter<TypeElement, Element>() {
 				@Override
 				public void visit(Option<TypeElement, Element> item) {
 					addItem(item, item.getAssociatedElement(), _options, Kind.WARNING);

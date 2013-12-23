@@ -10,8 +10,9 @@ import fr.labri.shelly.Option;
 import fr.labri.shelly.Composite;
 import fr.labri.shelly.Item;
 import fr.labri.shelly.Terminal;
+import fr.labri.shelly.Visitor;
 
-public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
+public class VisitorAdapter<C, M> implements Visitor<C, M> {
 	@Override
 	public void visit(Item<C, M> item) {
 	}
@@ -23,10 +24,10 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 	}
 	
 	public void visit_options(Item<C, M> comp) {
-		Visitor<C, M> option_visitor = new Visitor<C, M>() {
+		VisitorAdapter<C, M> option_visitor = new VisitorAdapter<C, M>() {
 			@Override
 			public void visit(Option<C, M> option ) {
-				Visitor.this.visit(option);
+				VisitorAdapter.this.visit(option);
 			}
 			@Override
 			public void visit(Composite<C, M> cmp ) {
@@ -36,10 +37,10 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 		comp.startVisit(option_visitor);
 	}
 	public void visit_actions(Composite<C, M> comp ) {
-		Visitor<C, M> action_visitor = new Visitor<C, M>() {
+		VisitorAdapter<C, M> action_visitor = new VisitorAdapter<C, M>() {
 			@Override
 			public void visit(Action<C, M> option) {
-				Visitor.this.visit(option);
+				VisitorAdapter.this.visit(option);
 			}
 			@Override
 			public void visit(Group<C, M> cmp) {
@@ -115,7 +116,7 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 		visit((Composite<C, M>)item);
 	}
 	
-	public static class TraversalVisitor<C, M> extends Visitor<C, M> {
+	public static class TraversalVisitor<C, M> extends VisitorAdapter<C, M> {
 		@Override
 		public void visit(Composite<C, M> item) {
 			item.visit_all(this);
@@ -125,14 +126,14 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 			visit((Composite<C, M>)item);
 		}
 	}
-	public static class ParentVisitor<C, M> extends Visitor<C, M> {
+	public static class ParentVisitor<C, M> extends VisitorAdapter<C, M> {
 		@Override
 		public void visit(Item<C, M> item) {
 			visit_parent(item);
 		}
 		
 	}	
-	public static class OptionVisitor<C, M> extends Visitor<C, M> {
+	public static class OptionVisitor<C, M> extends VisitorAdapter<C, M> {
 		@Override
 		public void visit(Group<C, M> item ) {
 		}
@@ -164,7 +165,7 @@ public class Visitor<C, M> implements fr.labri.shelly.Visitor<C, M> {
 	}
 
 	
-	public static class ActionVisitor<C, M> extends Visitor<C, M> {
+	public static class ActionVisitor<C, M> extends VisitorAdapter<C, M> {
 		
 		@Override
 		public void visit(Group<C, M> item) {

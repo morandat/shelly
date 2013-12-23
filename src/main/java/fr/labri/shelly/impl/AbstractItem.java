@@ -38,7 +38,7 @@ public abstract class AbstractItem<C, M> implements Item<C, M> {
 	
 	static public <C,M> String getFullName(Item<C, M> item) {
 		final StringBuilder builder = new StringBuilder();
-		item.accept(new Visitor.ParentVisitor<C, M>() {
+		item.accept(new VisitorAdapter.ParentVisitor<C, M>() {
 			@Override
 			public void visit(Item<C, M> item) {
 				super.visit(item);

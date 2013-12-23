@@ -10,7 +10,7 @@ import fr.labri.shelly.Terminal;
 public class Environ {
 	ArrayList<Entry> map = new ArrayList<>();
 	
-	void push(Composite<Class<?>, Member> composite, Object object) {
+	public void push(Composite<Class<?>, Member> composite, Object object) {
 		map.add(new Entry(composite, object));
 	}
 	

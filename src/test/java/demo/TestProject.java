@@ -30,6 +30,6 @@ public class TestProject {
 	
 	public static void main(String[] args) throws Exception {
 		Shell shell = Shelly.createShell(TestProject.class);
-		shell.loop(System.in, shell.getMultiLevelShell(new BufferedReader(new InputStreamReader(System.in))));
+		shell.loop(System.in, shell.new MultiLevelShellAdapter(new BufferedReader(new InputStreamReader(System.in))));
 	}
 }
