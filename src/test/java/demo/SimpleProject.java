@@ -11,7 +11,6 @@ import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.ConverterFactory;
 import fr.labri.shelly.Action;
-import fr.labri.shelly.CommandLine;
 import fr.labri.shelly.Converter;
 import fr.labri.shelly.HelpFactory;
 import fr.labri.shelly.Recognizer;

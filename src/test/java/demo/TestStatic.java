@@ -130,7 +130,7 @@ public class TestStatic {
 				@Command
 				public void foo () {
 					printInfo(getClass());
-					System.out.printf("%b %b %b %b %b\n", Test2.Test4.this.n4, Test2.Test4.this.s4, Test4.this.n4, Test4.this.s4, n6);
+					System.out.printf("%b %b %b %b %b\n", Test2.Test4.this.n4, Test2.Test4.s4, Test4.this.n4, Test4.s4, n6);
 				}
 				
 				@Error

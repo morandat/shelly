@@ -6,7 +6,6 @@ import java.io.InputStreamReader;
 import fr.labri.shelly.HelpFactory;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Shelly;
-import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.annotations.*;
 
 @Group
