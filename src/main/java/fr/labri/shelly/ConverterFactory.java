@@ -1,5 +1,7 @@
 package fr.labri.shelly;
 
+import java.util.Arrays;
+
 import fr.labri.shelly.Converter.ArrayConverter;
 import fr.labri.shelly.Converter.MapEntryConverter;
 import fr.labri.shelly.Converter.SimpleConverter;
@@ -33,19 +35,30 @@ public interface ConverterFactory {
 	};
 
 	public class BasicConverters implements ConverterFactory {
-		
 		@SuppressWarnings("unchecked")
 		public Converter<?> getConverter(Class<?> type) {
 			Converter<?> converter = null;
 			if (type.isArray())
 				converter = getActionArrayConverter((Class<Object[]>)type);
-			else
+			else if (Enum.class.isAssignableFrom(type)) {
+				converter = getEnumConverter(type);
+			} else
 				converter = getObjectConverter(type);
 
 			if (converter == null)
 				throw new RuntimeException(String.format("No converter for type %s", type.toString()));
 			return converter;
 		}
+
+		public Converter<?> getEnumConverter(final Class<?> type) {
+			return new SimpleConverter<Object>() {
+				@SuppressWarnings({ "unchecked", "rawtypes" })
+				@Override
+				public Object convert(String value) {
+					return (Object)Enum.valueOf((Class)type, value.toUpperCase());
+				}
+			};
+		}	
 		
 		public Converter<?> getActionArrayConverter(Class<? extends Object[]> type) {
 			return new ArrayConverter<>(getConverter(type.getComponentType()));
@@ -81,7 +94,7 @@ public interface ConverterFactory {
 		}
 	}
 	
-	abstract class PrimitiveConverterFactory<T> {
+	public abstract class PrimitiveConverterFactory<T> {
 		Class<T> type, primitiveType;
 		PrimitiveConverterFactory(Class<T> type, Class<T> primitiveType) {
 			this.type = type; 
@@ -114,7 +127,7 @@ public interface ConverterFactory {
 		abstract public T convertValue(String cmd);
 	};
 	
-	class BooleanFactory extends PrimitiveConverterFactory<Boolean>{
+	public class BooleanFactory extends PrimitiveConverterFactory<Boolean>{
 		BooleanFactory() {
 			super(Boolean.class, boolean.class);
 		}
@@ -125,7 +138,7 @@ public interface ConverterFactory {
 		}
 	}
 	
-	class IntFactory extends PrimitiveConverterFactory<Integer>{
+	public class IntFactory extends PrimitiveConverterFactory<Integer>{
 		IntFactory() {
 			super(Integer.class, int.class);
 		}
@@ -136,7 +149,7 @@ public interface ConverterFactory {
 		}
 	}
 	
-	class ShortFactory extends PrimitiveConverterFactory<Short>{
+	public class ShortFactory extends PrimitiveConverterFactory<Short>{
 		ShortFactory() {
 			super(Short.class, short.class);
 		}
@@ -146,7 +159,7 @@ public interface ConverterFactory {
 			return Short.parseShort(cmd);
 		}
 	}
-	class LongFactory extends PrimitiveConverterFactory<Long>{
+	public class LongFactory extends PrimitiveConverterFactory<Long>{
 		LongFactory() {
 			super(Long.class, long.class);
 		}
@@ -154,6 +167,27 @@ public interface ConverterFactory {
 		@Override
 		public Long convertValue(String cmd) {
 			return Long.parseLong(cmd);
+		}
+	}
+	public abstract class SeparatedString implements ConverterFactory {
+		abstract String getSeparator();
+		@Override
+		public Converter<?> getConverter(Class<?> type) {
+			if (type.isAssignableFrom(String[].class))
+				return new Converter.SimpleConverter<String[]>() {
+					@Override
+					public String[] convert(String value) {
+						System.out.println("Convert "+ value + " " + Arrays.toString(value.split(getSeparator())));
+						return value.split(getSeparator());
+					}
+				};
+			return null;
+		}
+	}
+	public class CommaSeparated extends SeparatedString {
+		@Override
+		String getSeparator() {
+			return ",";
 		}
 	}
 }

@@ -1,4 +1,4 @@
-package fr.labri.shelly.impl;
+package fr.labri.shelly;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;

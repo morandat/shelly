@@ -1,4 +1,4 @@
-package fr.labri.shelly.impl;
+package fr.labri.shelly;
 
 import java.io.PrintStream;
 import java.lang.reflect.Member;
@@ -6,22 +6,11 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import fr.labri.shelly.Action;
-import fr.labri.shelly.Command;
-import fr.labri.shelly.Composite;
-import fr.labri.shelly.Converter;
-import fr.labri.shelly.ConverterFactory;
-import fr.labri.shelly.Description;
-import fr.labri.shelly.Executor;
-import fr.labri.shelly.Group;
-import fr.labri.shelly.Option;
-import fr.labri.shelly.Recognizer;
-import fr.labri.shelly.ShellyException;
-import fr.labri.shelly.Triggerable;
-import fr.labri.shelly.annotations.Ignore.ExecutorMode;
-import fr.labri.shelly.Converter.ArrayConverter;
 import fr.labri.shelly.Visitor.*;
-import fr.labri.shelly.impl.ExecutableModelFactory.CommandAdapter;
+import fr.labri.shelly.annotations.Ignore.ExecutorMode;
+import fr.labri.shelly.Command.AbstractCommand;
+import fr.labri.shelly.Converter.ArrayConverter;
+import fr.labri.shelly.ExecutableModelFactory.CommandAdapter;
 
 public class HelpFactory {
 	static public class Factory extends ExecutableModelFactory.AbstractModelFactory {
@@ -70,7 +59,7 @@ public class HelpFactory {
 				
 				@Override
 				public void executeOption(Option<Class<?>, Member> opt, Object receive, Executor executor, String text) {
-					printHelp(ModelUtil.findRoot(parent), System.out, _formater, _renderer);
+					printHelp(Util.findRoot(parent), System.out, _formater, _renderer);
 					throw new ShellyException.EOLException();
 					
 				}
@@ -115,7 +104,7 @@ public class HelpFactory {
 			final HelpFormater formater, final HelpRenderer renderer) {
 		@SuppressWarnings("unchecked")
 		final Converter<String[]> converter =  new ArrayConverter<String>((Converter<String>) factory.getConverter(String.class));
-		return ExecutableModelFactory.EXECUTABLE_MODEL.newCommand(name, parent, null /*FIXME*/, converter, getHelpCommandAdapter(converter, navigator, formater, renderer));
+		return new ExecutableModelFactory().newCommand(name, parent, null /*FIXME*/, converter, getHelpCommandAdapter(converter, navigator, formater, renderer)); // FIXME remove this stupid new
 	}
 
 	private static CommandAdapter getHelpCommandAdapter(final Converter<String[]> converters, final HelpNavigator navigator, final HelpFormater formater, final HelpRenderer renderer) {
@@ -124,7 +113,7 @@ public class HelpFactory {
 			public void executeCommand(AbstractCommand<Class<?>, Member> cmd, Object receive, Executor executor, String next) {
 				ArrayConverter<String> args = new ArrayConverter<String>(ConverterFactory.STR_CONVERTER);
 				String[] query = args.convert(executor);
-				Triggerable<Class<?>, Member> item = navigator.findTopic(ModelUtil.findGroup(cmd), executor.getRecognizer(), query);
+				Triggerable<Class<?>, Member> item = navigator.findTopic(Util.findGroup(cmd), executor.getRecognizer(), query);
 				printHelp(item, System.out, formater, renderer);
 			}
 
@@ -179,19 +168,23 @@ public class HelpFactory {
 			item.accept(new VisitorAdapter<C, M>() {
 				public void visit(Group<C, M> grp) {
 					Description d =  grp.getDescription();
-					help.addTitle("Description");
+//					help.addTitle("Description");
 					help.addLongHelp(d);
 					help.skipLine();
 
-					help.addTitle("Commands");
-					help.addHelp(d.getDescription());
-					help.skipLine();
+					String[][] descs = d.getDescription();
+					if (descs == null || descs.length == 0) {
+						help.addTitle("Commands");
+						help.addHelp(descs);
+						help.skipLine();
+					}
+
 
 					help.addTitle("Options");
 					new OptionVisitor<C, M>() {
 						public void visit(Option<C, M> option) {
-							if(ExecutorMode.HELP.isIgnored(option));
-							help.addShortHelp(option);
+							if(!ExecutorMode.HELP.isIgnored(option))
+								help.addShortHelp(option);
 						}
 					}.startVisit(grp);
 				}
@@ -250,11 +243,11 @@ public class HelpFactory {
 		@Override
 		public <C,M> Triggerable<C, M> findTopic(Composite<C, M> context, Recognizer parser, String[] cmds) {
 			if (cmds.length == 0) {
-				return ModelUtil.findGroup(context);
+				return Util.findGroup(context);
 			} else {
-				Action<C, M> parent = ModelUtil.findGroup(context);
+				Action<C, M> parent = Util.findGroup(context);
 				for (int i = 0; i < cmds.length; i++) {
-					Action<C, M> cmd = ModelUtil.findAction(parent, parser, cmds[i]);
+					Action<C, M> cmd = Util.findAction(parent, parser, cmds[i]);
 					if (cmd == null) {
 						System.err.println("No topic " + cmds[i]);
 						break;
@@ -270,7 +263,7 @@ public class HelpFactory {
 	static final Description HELP_DESCRIPTION = new Description() {
 		@Override
 		public String getShortDescription() {
-			return "Give an help message";
+			return "Give an help message (this screen)";
 		}
 		
 		@Override
@@ -319,7 +312,7 @@ public class HelpFactory {
 		}
 
 		void addShortHelp(Triggerable<?, ?> item) {
-			addHelp(item.getID(), item.getDescription().getLongDescription());
+			addHelp(item.getID(), item.getDescription().getShortDescription());
 		}
 
 		void addShortHelp(String id, Description description) {

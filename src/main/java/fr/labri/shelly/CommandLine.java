@@ -7,10 +7,8 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import fr.labri.shelly.Executor.BasicExecutor;
+import fr.labri.shelly.Executor.Environ;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
-import fr.labri.shelly.impl.Environ;
-import fr.labri.shelly.impl.HelpFactory;
-import fr.labri.shelly.impl.PeekIterator;
 
 public class CommandLine extends BasicExecutor{
 	final Group<Class<?>, Member> _root;

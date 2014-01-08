@@ -1,5 +1,6 @@
 package demo;
 
+import fr.labri.shelly.HelpFactory;
 import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Shelly;
 import fr.labri.shelly.ShellyException;
@@ -7,7 +8,6 @@ import fr.labri.shelly.annotations.Command;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.annotations.Group;
 import fr.labri.shelly.annotations.Option;
-import fr.labri.shelly.impl.HelpFactory;
 
 @Group
 public class TestStatic {
@@ -131,6 +131,11 @@ public class TestStatic {
 				public void foo () {
 					printInfo(getClass());
 					System.out.printf("%b %b %b %b %b\n", Test2.Test4.this.n4, Test2.Test4.this.s4, Test4.this.n4, Test4.this.s4, n6);
+				}
+				
+				@Error
+				void help(ShellyException e, String [] args) {
+					
 				}
 			}
 		}

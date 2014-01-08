@@ -11,12 +11,9 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 import fr.labri.shelly.Executor.BasicExecutor;
+import fr.labri.shelly.Executor.Environ;
 import fr.labri.shelly.ShellyException.EOLException;
 import fr.labri.shelly.annotations.Ignore.ExecutorMode;
-import fr.labri.shelly.impl.Environ;
-import fr.labri.shelly.impl.ModelUtil;
-import fr.labri.shelly.impl.HelpFactory;
-import fr.labri.shelly.impl.PeekIterator;
 
 public class Shell extends BasicExecutor {
 	final Group<Class<?>, Member> _root;
@@ -138,7 +135,7 @@ public class Shell extends BasicExecutor {
 
 			@Override
 			public Group<Class<?>, Member> getRoot() {
-				return this.getRoot();
+				return Shell.this.getRoot();
 			}
 			@Override
 			public void finalize(CommandExecutor executor, Action<Class<?>, Member> last) {
@@ -147,11 +144,11 @@ public class Shell extends BasicExecutor {
 			}
 	}
 	public Action<Class<?>, Member> findAction(Recognizer parser, String cmd) {
-		return ModelUtil.findAction(getRoot(), parser, cmd);
+		return Util.findAction(getRoot(), parser, cmd);
 	}
 
 	public Option<Class<?>, Member> findOption(Recognizer parser, String cmd) {
-		return ModelUtil.findOption(getRoot(), parser, cmd);
+		return Util.findOption(getRoot(), parser, cmd);
 	}
 
 	public class MultiLevelShellAdapter extends SimpleShellAdapter {

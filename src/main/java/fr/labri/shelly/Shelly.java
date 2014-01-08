@@ -2,9 +2,6 @@ package fr.labri.shelly;
 
 import java.lang.reflect.Member;
 
-import fr.labri.shelly.impl.ExecutableModelFactory;
-import fr.labri.shelly.impl.ModelBuilder;
-
 public class Shelly {
 	static public Group<Class<?>, Member> createModel(Class<?> clazz) {
 		return createModel(new ExecutableModelFactory.Executable(), clazz);

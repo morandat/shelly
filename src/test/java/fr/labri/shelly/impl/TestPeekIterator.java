@@ -6,6 +6,7 @@ import java.util.NoSuchElementException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import fr.labri.shelly.PeekIterator;
 import static org.testng.Assert.*;
 
 public class TestPeekIterator {

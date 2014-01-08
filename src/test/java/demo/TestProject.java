@@ -3,14 +3,17 @@ package demo;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
+import fr.labri.shelly.HelpFactory;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Shelly;
+import fr.labri.shelly.ShellyException;
 import fr.labri.shelly.annotations.*;
 
 @Group
 public class TestProject {
 	@Option(flags="vV") public boolean verbose;
 	@Option(flags="l") public int level;
+	@Option(factory=HelpFactory.Factory.class) public void help() {}
 	@Command public void test1(int nb) {
 		System.out.printf("%b %d -- %d\n", verbose, level, nb);
 	}

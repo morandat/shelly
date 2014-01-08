@@ -1,14 +1,8 @@
-package fr.labri.shelly.impl;
+package fr.labri.shelly;
 
-import fr.labri.shelly.Action;
-import fr.labri.shelly.Composite;
-import fr.labri.shelly.Group;
-import fr.labri.shelly.Item;
-import fr.labri.shelly.Option;
-import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Visitor.*;
 
-public class ModelUtil {
+public class Util {
 
 	@SuppressWarnings("unchecked")
 	public static <C,M> Action<C, M> findAction(Action<C, M> start, final Recognizer parser, final String cmd) {
@@ -70,5 +64,13 @@ public class ModelUtil {
 			parent = (last = parent).getParent();
 		assert last instanceof Group;
 		return (Group<C, M>)last;
+	}
+	
+	static public int startWith(String str, String prefix, int offset) {
+		return str.startsWith(prefix, offset) ? prefix.length() + offset : -1;
+	}
+
+	static public boolean endsWith(String str, String suffix, int offset) {
+		return (offset + suffix.length() == str.length()) ? str.endsWith(suffix) : false;
 	}
 }

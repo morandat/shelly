@@ -1,9 +1,10 @@
-package fr.labri.shelly.impl;
+package fr.labri.shelly.annotations;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,46 +14,37 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 
 import fr.labri.shelly.ConverterFactory;
+import fr.labri.shelly.ExecutableModelFactory;
 import fr.labri.shelly.ModelFactory;
-import fr.labri.shelly.annotations.Command;
-import fr.labri.shelly.annotations.Context;
-import fr.labri.shelly.annotations.Group;
-import fr.labri.shelly.annotations.Option;
 
 public class AnnotationUtils {
 	public interface AnnotationType<V> {
 		<A extends Annotation> A getValue(V elt, Class<? extends A> a);
 	}
-	final public static AnnotationType<AnnotatedElement> REFLECT = new AnnotationType<AnnotatedElement>() {
-		@Override
-		public <A extends Annotation> A getValue(AnnotatedElement elt, Class<? extends A> a) {
-			return elt.getAnnotation(a);
-		}
-	};
-	final public static AnnotationType<Element> ELEMENT = new AnnotationType<Element>() {
-		@Override
-		public <A extends Annotation> A getValue(Element elt, Class<? extends A> a) {
-			return elt.getAnnotation(a);
-		}
-	};
+
 	public static abstract class AnnotationValue<T, V> {
-		final Map<Class<? extends Annotation>, Field> f = new HashMap<>(ModelFactory.SHELLY_ANNOTATIONS.size());
+		final Map<Class<? extends Annotation>, Method> f = new HashMap<>(ModelFactory.SHELLY_ANNOTATIONS.size());
 		final V dflt; 
 		public AnnotationValue(String field, V value) {
 			dflt = value;
-			try {
-				for (Class<? extends Annotation> a : ModelFactory.SHELLY_ANNOTATIONS)
-						f.put(a, a.getField(field));
-			} catch (NoSuchFieldException | SecurityException e) {
-			}
+			for (Class<? extends Annotation> a : ModelFactory.SHELLY_ANNOTATIONS)
+				try {
+					f.put(a, a.getMethod(field));
+				} catch (SecurityException | NoSuchMethodException e) {
+				}
 		}
 
-		abstract Annotation getAnnotation(T elt, Class<? extends Annotation> a);
+		public abstract Annotation getAnnotation(T elt, Class<? extends Annotation> a);
 
 		@SuppressWarnings("unchecked")
 		public V getValue(Class<? extends Annotation> a, T elt) {
 			Annotation c = getAnnotation(elt, a);
-			return c == null ? dflt : (f.containsKey(c) ? (V)f.get(c) : dflt);
+			try {
+				if (f.containsKey(a))
+					return (V) f.get(a).invoke(c);
+			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			}
+			return dflt;
 		}
 		
 		public V getOption(T o) {
@@ -67,28 +59,6 @@ public class AnnotationUtils {
 		public V getContext(T o) {
 			return getValue(Context.class, o);
 		}
-	}
-	public static class ElementValue<V> extends AnnotationValue<Element, V> {
-		public ElementValue(String field, V value) {
-			super(field, value);
-		}
-
-		@Override
-		Annotation getAnnotation(Element elt, Class<? extends Annotation> a) {
-			return elt.getAnnotation(a);
-		}
-		
-	}
-	public static class ReflectValue<V> extends AnnotationValue<AnnotatedElement, V> {
-		public ReflectValue(String field, V value) {
-			super(field, value);
-		}
-
-		@Override
-		Annotation getAnnotation(AnnotatedElement elt, Class<? extends Annotation> a) {
-			return elt.getAnnotation(a);
-		}
-		
 	}
 
 	@SuppressWarnings("unchecked")
@@ -202,18 +172,4 @@ public class AnnotationUtils {
 		return item.getAnnotations();
 	}
 	
-	// public static Class<? extends ConverterFactory> getConverterFactory(Group annotation) {
-	// try {
-	// return getConverterFactory(annotation.converter());
-	// } catch (javax.lang.model.type.MirroredTypeException e) {
-	// return null;
-	// }
-	// }
-	// public static Class<? extends ConverterFactory> getConverterFactory(Context annotation) {
-	// try {
-	// return getConverterFactory(annotation.converter());
-	// } catch (javax.lang.model.type.MirroredTypeException e) {
-	// return null;
-	// }
-	// }
 }

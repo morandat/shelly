@@ -1,6 +1,5 @@
 package fr.labri.shelly;
 
-import fr.labri.shelly.impl.StringUtils;
 
 public interface Recognizer {
 
@@ -50,7 +49,7 @@ public interface Recognizer {
 		@Override
 		public int isLongOptionValid(String cmd, Option<?, ?> option) {
 //			return option.isValid(this, cmd, longOptionPrefix.length()) == cmd.length();
-			return StringUtils.startWith(cmd, option.getID(), longOptionPrefix.length());
+			return Util.startWith(cmd, option.getID(), longOptionPrefix.length());
 		}
 		
 		@Override
@@ -60,7 +59,7 @@ public interface Recognizer {
 
 		@Override
 		public int isActionValid(String cmd, Action<?, ?> action) {
-			return StringUtils.startWith(cmd, action.getID(), 0);
+			return Util.startWith(cmd, action.getID(), 0);
 		}
 		
 		
@@ -95,7 +94,7 @@ public interface Recognizer {
 			if(str.startsWith(no_flag, start))
 				start += no_flag.length();
 			
-			return start = StringUtils.startWith(str, option.getID(), start);
+			return start = Util.startWith(str, option.getID(), start);
 		}
 	}
 }

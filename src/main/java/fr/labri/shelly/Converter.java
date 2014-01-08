@@ -7,8 +7,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
-import fr.labri.shelly.impl.PeekIterator;
-
 public interface Converter<T> {
 	public abstract T convert(Executor executor);
 

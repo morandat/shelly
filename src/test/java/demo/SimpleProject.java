@@ -10,14 +10,14 @@ import java.util.Set;
 import fr.labri.shelly.annotations.*;
 import fr.labri.shelly.annotations.Error;
 import fr.labri.shelly.ConverterFactory;
-import fr.labri.shelly.impl.HelpFactory;
-import fr.labri.shelly.impl.ModelUtil;
 import fr.labri.shelly.Action;
 import fr.labri.shelly.CommandLine;
 import fr.labri.shelly.Converter;
+import fr.labri.shelly.HelpFactory;
 import fr.labri.shelly.Recognizer;
 import fr.labri.shelly.Shell;
 import fr.labri.shelly.Shelly;
+import fr.labri.shelly.Util;
 
 @Group(name = "git")
 public class SimpleProject {
@@ -63,7 +63,7 @@ public class SimpleProject {
 		} else {
 			Action<Class<?>, Member> parent = shell.getRoot();
 			for (int i = 0; i < cmds.length; i++) {
-				Action<Class<?>, Member> cmd = ModelUtil.findAction(parent, Recognizer.GNUNonStrict, cmds[i]);
+				Action<Class<?>, Member> cmd = Util.findAction(parent, Recognizer.GNUNonStrict, cmds[i]);
 				if (cmd == null) {
 					System.out.println("No topic " + cmds[i]);
 					break;
@@ -196,10 +196,12 @@ public class SimpleProject {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		fr.labri.shelly.Group<Class<?>, Member> model = Shelly.createModel(SimpleProject.class);
-		if (args.length == 0)
-			new Shell(Recognizer.GNUNonStrict, model).loop(System.in);
-		else
-			new CommandLine(Recognizer.GNUNonStrict, model).parseCommandLine(args);
+		Shelly.createCommandLine(SimpleProject.class, Recognizer.GNUNonStrict);
+//		
+//		fr.labri.shelly.Group<Class<?>, Member> model = Shelly.createModel(SimpleProject.class);
+//		if (args.length == 0)
+//			new Shell(Recognizer.GNUNonStrict, model).loop(System.in);
+//		else
+//			new CommandLine(Recognizer.GNUNonStrict, model).parseCommandLine(args);
 	}
 }
